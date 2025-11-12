@@ -36,6 +36,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const init = async () => {
       try {
+        // 1) Eager rehydratace z cache (okamžitě, bez čekání na síť)
+        const cached = authUtils.getCachedUser();
+        if (isMounted && cached) {
+          setUser(cached);
+          // UI může pokračovat bez čekání na síť
+          setLoading(false);
+        }
+
+        // 2) Síťové ověření aktuální session u Supabase
         const current = await authUtils.getCurrentUser();
         if (!isMounted) return;
         setUser(current);
@@ -100,13 +109,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setError(null);
       await authUtils.logout();
-      setUser(null);
     } catch (err: any) {
-      setError(err.message);
-      throw err;
+      console.warn("logout error:", err?.message || err);
+    } finally {
+      // Vynutit lokální odhlášení za každých okolností
+      setUser(null);
+      setLoading(false);
     }
   };
 

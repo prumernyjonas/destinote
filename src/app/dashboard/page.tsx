@@ -9,7 +9,6 @@ import { dbUtils } from "@/utils/supabase-db";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import VectorWorldMap from "@/components/VectorWorldMap";
 import { UserStats, Article, Badge } from "@/types/database";
@@ -26,17 +25,21 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [articles, setArticles] = useState<Article[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const { user, logout, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const loadDashboardData = useCallback(async () => {
     try {
-      setLoading(true);
       setError(null);
-
       if (!user || !user.uid) return;
+      setLoading(true);
 
       const [userStats, userArticles, userBadges] = await Promise.all([
         dbUtils.getUserStats(user.uid),
@@ -56,27 +59,27 @@ export default function DashboardPage() {
     }
   }, [user]);
 
+  // 1) Sync tab with query param when it changes
   useEffect(() => {
-    // Sync tab with query param when it changes
     const qpTab = (searchParams?.get("tab") as string) || "map";
     const sanitized = allowedTabs.has(qpTab) ? qpTab : "map";
     if (sanitized !== activeTab) setActiveTab(sanitized);
+  }, [searchParams, activeTab]);
 
-    if (authLoading) {
-      return;
-    }
-
+  // 2) Načtení dat po mountu a jakmile je k dispozici uživatel
+  useEffect(() => {
+    if (!mounted) return;
     if (!user) {
       router.push("/auth/login");
       return;
     }
-
     loadDashboardData();
-  }, [user, authLoading, router, loadDashboardData, searchParams, activeTab]);
+  }, [mounted, user, activeTab, loadDashboardData, router]);
 
   // Odhlášení bude řešit dropdown v Navbaru, lokálně nepotřebné
 
-  if (authLoading) {
+  // Stabilizace hydratace: před mountem vrať stejný obsah jako SSR (loader)
+  if (!mounted || authLoading) {
     return <LoadingSpinner text="Načítání přihlášení..." />;
   }
 
@@ -84,20 +87,7 @@ export default function DashboardPage() {
     return <LoadingSpinner text="Přesměrování na přihlášení..." />;
   }
 
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Skeleton className="h-28" />
-          <Skeleton className="h-28" />
-          <Skeleton className="h-28" />
-        </div>
-        <div className="mt-8">
-          <Skeleton className="h-96" />
-        </div>
-      </div>
-    );
-  }
+  // UI se rendruje i během načítání dat; jednotlivé sekce pracují s prázdnými hodnotami
 
   return (
     <Suspense fallback={null}>

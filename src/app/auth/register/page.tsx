@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { useToast } from "@/components/ui/Toast";
+import { validatePasswordStrength } from "@/utils/password";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -23,6 +24,12 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
+
+    const strengthError = validatePasswordStrength(formData.password);
+    if (strengthError) {
+      setLocalError(strengthError);
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setLocalError("Hesla se neshodují!");

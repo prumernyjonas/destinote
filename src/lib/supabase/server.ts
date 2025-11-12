@@ -16,7 +16,8 @@ export async function createServerSupabaseClient() {
           cookieStore.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: "", ...options });
+          // Korektně expirovat cookie; některé prohlížeče/hosty ignorují delete bez shody atributů
+          cookieStore.set({ name, value: "", ...options, maxAge: 0 });
         },
       },
     }

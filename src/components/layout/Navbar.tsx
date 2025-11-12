@@ -18,11 +18,16 @@ export default function Navbar() {
   const pathname = usePathname();
   const params = useSearchParams();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, loading: authLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [countriesOpen, setCountriesOpen] = useState(false);
   const countriesRef = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -74,8 +79,8 @@ export default function Navbar() {
               <Image
                 src="/logo.svg"
                 alt="Destinote"
-                width={120}
-                height={24}
+                width={140}
+                height={36}
                 priority
               />
             </Link>
@@ -83,7 +88,7 @@ export default function Navbar() {
 
           {/* Center: Nav links */}
           <nav
-            className="hidden md:flex items-center space-x-8 text-blue-900"
+            className="hidden md:flex items-center space-x-12 text-blue-900 text-lg"
             role="navigation"
             aria-label="Hlavní"
           >
@@ -104,13 +109,13 @@ export default function Navbar() {
                 onMouseEnter={() => setCountriesOpen(true)}
                 className={`${
                   pathname === "/countries" ? "underline" : "hover:underline"
-                } underline-offset-4 decoration-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded`}
+                } cursor-pointer underline-offset-4 decoration-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded`}
               >
                 Země
               </button>
               {countriesOpen && (
                 <div
-                  className="absolute left-1/2 -translate-x-1/2 mt-4 w-[900px] max-w-[90vw] bg-white shadow-xl border rounded-lg p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 z-50"
+                  className="absolute mt-7 left-1/2 -translate-x-1/2 w-[900px] max-w-[90vw] bg-white shadow-xl border rounded-lg p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 z-50"
                   onMouseLeave={() => setCountriesOpen(false)}
                 >
                   {[
@@ -170,7 +175,7 @@ export default function Navbar() {
                     },
                   ].map((col) => (
                     <div key={col.title} className="min-w-[140px]">
-                      <div className="font-semibold text-gray-900 mb-3">
+                      <div className="font-semibold text-gray-900 hover:text-green-800 mb-3 cursor-pointer">
                         {col.title}
                       </div>
                       <ul className="space-y-2 text-gray-700">
@@ -225,14 +230,9 @@ export default function Navbar() {
 
           {/* Right: Auth */}
           <div className="flex items-center relative" ref={menuRef}>
-            {!user ? (
-              <button
-                onClick={() => router.push("/auth/login")}
-                className="px-4 py-2 rounded-full bg-green-700 text-white text-sm hover:bg-green-800 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
-              >
-                Přihlásit se
-              </button>
-            ) : (
+            {!mounted ? (
+              <div style={{ width: 96, height: 36 }} />
+            ) : user ? (
               <>
                 <button
                   aria-label="Uživatelské menu"
@@ -256,9 +256,11 @@ export default function Navbar() {
                       onClick={async () => {
                         try {
                           await logout();
+                        } finally {
                           setMenuOpen(false);
-                          router.push("/");
-                        } catch {}
+                          router.replace("/auth/login");
+                          router.refresh();
+                        }
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
                     >
@@ -267,6 +269,15 @@ export default function Navbar() {
                   </div>
                 )}
               </>
+            ) : authLoading ? (
+              <div style={{ width: 96, height: 36 }} />
+            ) : (
+              <button
+                onClick={() => router.push("/auth/login")}
+                className="px-5 py-2.5 rounded-full bg-green-700 text-white cursor-pointer text-base hover:bg-green-800 active:bg-green-900 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
+              >
+                Přihlásit se
+              </button>
             )}
           </div>
         </div>

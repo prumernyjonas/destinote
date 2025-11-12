@@ -135,7 +135,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Features Section */}
       <section className="bg-gray-50 py-16 px-6">
         <div className="max-w-6xl mx-auto">
