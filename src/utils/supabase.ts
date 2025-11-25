@@ -63,6 +63,21 @@ export const authUtils = {
     if (typeof window === "undefined") return null;
     return deserializeUser(localStorage.getItem(LOCAL_STORAGE_USER_KEY));
   },
+  async loginWithGoogle(): Promise<void> {
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/auth/login`
+        : undefined;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+      },
+    });
+    if (error) {
+      throw new Error(error.message);
+    }
+  },
   setCachedUser(user: User) {
     if (typeof window === "undefined") return;
     localStorage.setItem(LOCAL_STORAGE_USER_KEY, serializeUser(user));
@@ -141,14 +156,26 @@ export const authUtils = {
   async logout(): Promise<void> {
     try {
       // 1) Odhlásit aktuální klientskou session (volitelně globálně napříč zařízeními)
-      const { error } = await supabase.auth.signOut({ scope: "global" });
+      const signOutPromise = supabase.auth.signOut({ scope: "global" });
+      // ochranný timeout, aby UI nečekalo nekonečně dlouho
+      const { error } = await Promise.race([
+        signOutPromise,
+        new Promise<{ error: { message?: string } | null }>((resolve) =>
+          setTimeout(() => resolve({ error: null }), 1500)
+        ),
+      ]);
       if (error) {
         // Nepropagujeme chybu, jen zalognujeme a pokračujeme
         console.warn("Supabase signOut error:", error.message);
       }
       // 2) Pokusit se odhlásit i na serveru, aby se smazaly httpOnly cookies (SSR)
       try {
-        await fetch("/api/auth/logout", { method: "POST" });
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 1500);
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          signal: controller.signal,
+        }).finally(() => clearTimeout(t));
       } catch (_) {
         // Tiché selhání – klient je už odhlášen
       }

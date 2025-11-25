@@ -4,3 +4,5 @@ ignoredBuiltDependencies:
   - protobufjs
   - sharp
   - unrs-resolver
+
+storeDir: .pnpm-store

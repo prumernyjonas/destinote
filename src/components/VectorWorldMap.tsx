@@ -130,7 +130,7 @@ export default function VectorWorldMap({
 
       async function saveVisit(isoA2?: string) {
         if (!userId || !isoA2) return;
-        await dbUtils.saveVisit(userId, isoA2.toUpperCase());
+        await dbUtils.saveVisitIso(userId, isoA2.toUpperCase());
       }
 
       map.addSource("countries", {

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import PublicWorldMap from "@/components/PublicWorldMap";
-
 export default function Home() {
   return (
     <div className="min-h-screen bg-white">

@@ -10,6 +10,18 @@ const nextConfig: NextConfig = {
     // Skip type errors during production builds (optional)
     ignoreBuildErrors: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "**.supabase.co",
+      },
+    ],
+  },
   // Fix pro špatně odvozený kořen projektu při Turbopacku
   // (zabraňuje HMR chybám s global-error.js)
   turbopack: {

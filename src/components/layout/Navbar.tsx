@@ -24,6 +24,7 @@ export default function Navbar() {
   const [countriesOpen, setCountriesOpen] = useState(false);
   const countriesRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -237,9 +238,19 @@ export default function Navbar() {
                 <button
                   aria-label="Uživatelské menu"
                   onClick={() => setMenuOpen((v) => !v)}
-                  className="w-9 h-9 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
+                  className="w-9 h-9 rounded-full overflow-hidden bg-green-100 text-green-700 flex items-center justify-center font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
                 >
-                  {getInitial(user)}
+                  {user.photoURL ? (
+                    <Image
+                      src={user.photoURL}
+                      alt={user.displayName || user.email}
+                      width={36}
+                      height={36}
+                      className="object-cover w-9 h-9"
+                    />
+                  ) : (
+                    getInitial(user)
+                  )}
                 </button>
                 {menuOpen && (
                   <div className="absolute right-0 top-12 w-44 bg-white shadow-lg rounded-md border py-1 z-50">
@@ -254,17 +265,21 @@ export default function Navbar() {
                     </button>
                     <button
                       onClick={async () => {
+                        if (loggingOut) return;
+                        setLoggingOut(true);
                         try {
                           await logout();
                         } finally {
                           setMenuOpen(false);
+                          setLoggingOut(false);
                           router.replace("/auth/login");
                           router.refresh();
                         }
                       }}
-                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+                      disabled={loggingOut}
+                      className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
                     >
-                      Odhlásit se
+                      {loggingOut ? "Odhlašuji…" : "Odhlásit se"}
                     </button>
                   </div>
                 )}

@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:countries": "node scripts/seed-countries.cjs",
+    "export:countries": "node scripts/export-countries-csv.cjs"
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
@@ -21,6 +23,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-icons": "^5.5.0",
+    "react-simple-maps": "^3.0.0",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
