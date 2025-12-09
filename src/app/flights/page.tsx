@@ -211,16 +211,30 @@ export default function FlightsPage() {
       if (by === "fastest")
         return a.totalDurationMinutes - b.totalDurationMinutes;
       if (by === "co2") return a.co2Kg - b.co2Kg;
-      if (by === "depart")
-        return (
-          new Date(a.segments[0].departureTime).getTime() -
-          new Date(b.segments[0].departureTime).getTime()
-        );
-      if (by === "arrive")
-        return (
-          new Date(a.segments[a.segments.length - 1].arrivalTime).getTime() -
-          new Date(b.segments[b.segments.length - 1].arrivalTime).getTime()
-        );
+      if (by === "depart") {
+        const aFirst = a.segments?.[0]?.departureTime;
+        const bFirst = b.segments?.[0]?.departureTime;
+        const aTs = aFirst
+          ? new Date(aFirst).getTime()
+          : Number.MAX_SAFE_INTEGER;
+        const bTs = bFirst
+          ? new Date(bFirst).getTime()
+          : Number.MAX_SAFE_INTEGER;
+        return aTs - bTs;
+      }
+      if (by === "arrive") {
+        const aLast =
+          a.segments && a.segments.length > 0
+            ? a.segments[a.segments.length - 1]?.arrivalTime
+            : undefined;
+        const bLast =
+          b.segments && b.segments.length > 0
+            ? b.segments[b.segments.length - 1]?.arrivalTime
+            : undefined;
+        const aTs = aLast ? new Date(aLast).getTime() : Number.MAX_SAFE_INTEGER;
+        const bTs = bLast ? new Date(bLast).getTime() : Number.MAX_SAFE_INTEGER;
+        return aTs - bTs;
+      }
       // recommended: price + duration heuristic
       const aScore = a.priceCZK * 0.7 + a.totalDurationMinutes * 3;
       const bScore = b.priceCZK * 0.7 + b.totalDurationMinutes * 3;
@@ -541,8 +555,15 @@ export default function FlightsPage() {
             <div className="space-y-4">
               {filteredAndSorted.map((r) => {
                 const stops = Math.max(0, r.segments.length - 1);
-                const depart = r.segments[0].departureTime;
-                const arrive = r.segments[r.segments.length - 1].arrivalTime;
+                const depart =
+                  r.segments?.[0]?.departureTime ||
+                  (r.segments && r.segments.length > 0
+                    ? r.segments[0].departureTime
+                    : "");
+                const arrive =
+                  (r.segments && r.segments.length > 0
+                    ? r.segments[r.segments.length - 1]?.arrivalTime
+                    : "") || "";
                 return (
                   <Card key={r.id} variant="outlined">
                     <CardContent className="p-4">

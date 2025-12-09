@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [visited, setVisited] = useState<
     Array<{ iso2: string; name: string; id: string }>
   >([]);
+  const [visitedCount, setVisitedCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -52,20 +53,44 @@ export default function DashboardPage() {
       if (!user || !user.uid) return;
       setLoading(true);
 
-      const [userStats, userArticles, userBadges, visitedCountries] =
-        await Promise.all([
+      // Načti paralelně, ale neházej vše kvůli selhání jedné části
+      const [userStatsRes, articlesRes, badgesRes, visitedRes] =
+        await Promise.allSettled([
           dbUtils.getUserStats(user.uid),
           dbUtils.getArticles(),
           dbUtils.getBadges(user.uid),
           dbUtils.getVisitedCountries(user.uid),
         ]);
 
-      setStats(userStats);
+      const defaultStats: UserStats = {
+        countriesVisited: 0,
+        continentsVisited: 0,
+        articlesWritten: 0,
+        badgesEarned: 0,
+        level: 1,
+        followers: 0,
+        following: 0,
+      };
+
+      const userStats =
+        userStatsRes.status === "fulfilled" ? userStatsRes.value : defaultStats;
+      const userArticles =
+        articlesRes.status === "fulfilled" ? articlesRes.value : [];
+      const userBadges =
+        badgesRes.status === "fulfilled" ? badgesRes.value : [];
+      const visitedCountries =
+        visitedRes.status === "fulfilled" ? visitedRes.value : [];
+
+      // Nejprve nastav navštívené země a počty (kritické pro header)
+      setVisited(visitedCountries);
+      setVisitedCount(visitedCountries.length);
+
+      // Doplň ostatní sekce
+      setStats({ ...userStats, countriesVisited: visitedCountries.length });
       setArticles(
-        userArticles.filter((article) => article.authorId === user.uid)
+        userArticles.filter((article: Article) => article.authorId === user.uid)
       );
       setBadges(userBadges);
-      setVisited(visitedCountries);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Neznámá chyba");
     } finally {
@@ -104,7 +129,6 @@ export default function DashboardPage() {
   const avatarUrl = (avatarOverride ?? user.photoURL) || "";
   const followers = stats?.followers ?? 0;
   const following = stats?.following ?? 0;
-  const visitedCount = visited.length;
   const initials = displayName
     .split(" ")
     .map((p) => p.trim()[0])
@@ -264,7 +288,7 @@ export default function DashboardPage() {
                         <div className="text-sm text-gray-500">
                           Objeveno zemí:{" "}
                           <span className="font-medium text-emerald-600">
-                            {visitedCount}
+                            {visitedCount || visited.length}
                           </span>
                         </div>
                       </div>
@@ -287,7 +311,6 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              <StatsCards stats={stats} />
               <Card>
                 <CardHeader>
                   <CardTitle>{displayName} – Interaktivní mapa</CardTitle>
@@ -296,12 +319,28 @@ export default function DashboardPage() {
                   <DashboardPublicWorldMap
                     userId={user.uid}
                     unvisitRequest={unvisitReq}
+                    onVisitedPreload={(list) => {
+                      // sjednotíme header i list podle mapy
+                      setVisited(list);
+                      setVisitedCount(list.length);
+                      setStats((prev) =>
+                        prev ? { ...prev, countriesVisited: list.length } : prev
+                      );
+                    }}
                     onVisitSaved={async () => {
+                      // Optimistický refresh + následná synchronizace s DB
                       try {
+                        // 1) Okamžitý lokální refresh z DB seznamu (rychlé volání)
                         const refreshed = await dbUtils.getVisitedCountries(
                           user.uid
                         );
                         setVisited(refreshed);
+                        setVisitedCount(refreshed.length);
+                        setStats((prev) =>
+                          prev
+                            ? { ...prev, countriesVisited: refreshed.length }
+                            : prev
+                        );
                       } catch (e) {
                         console.error(e);
                         setError(
@@ -330,10 +369,17 @@ export default function DashboardPage() {
                     onRemove={async (iso2) => {
                       try {
                         await dbUtils.removeVisitIso(user.uid, iso2);
-                        setVisited((prev) =>
-                          prev.filter((v) => v.iso2 !== iso2)
+                        const newVisited = visited.filter(
+                          (v) => v.iso2 !== iso2
                         );
+                        setVisited(newVisited);
                         setUnvisitReq({ iso2, nonce: Date.now() });
+                        setVisitedCount(newVisited.length);
+                        setStats((prev) =>
+                          prev
+                            ? { ...prev, countriesVisited: newVisited.length }
+                            : prev
+                        );
                       } catch (e) {
                         console.error(e);
                         setError(

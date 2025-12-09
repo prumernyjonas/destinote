@@ -64,25 +64,7 @@ export default function VectorWorldMap({
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
 
-    // Přepnout projekci na zeměkouli a přidat atmosférický efekt
-    const enableGlobe = () => {
-      try {
-        const supportsGlobe = typeof (map as any).setProjection === "function";
-        if (supportsGlobe) {
-          (map as any).setProjection("globe");
-          (map as any).setFog?.({
-            range: [0.5, 10],
-            color: "#dbeafe",
-            "horizon-blend": 0.2,
-          } as any);
-        } else {
-          // Explicitní fallback – odstraní varování o neznámé projekci
-          (map as any).setProjection?.("mercator");
-        }
-      } catch {
-        (map as any).setProjection?.("mercator");
-      }
-    };
+    // Nepoužíváme 3D/Globe projekci
 
     // Vylepšení kvality vykreslování pro lepší přesnost polygonů
     const optimizeRendering = () => {
@@ -97,10 +79,9 @@ export default function VectorWorldMap({
         // ignore if not supported
       }
     };
-    map.on("style.load", enableGlobe);
+    // Nepřipojujeme style.load pro globe
 
     map.on("load", async () => {
-      enableGlobe();
       optimizeRendering();
       // Načtení GeoJSON států
       const res = await fetch(geojsonUrl);
@@ -109,6 +90,10 @@ export default function VectorWorldMap({
         return;
       }
       const data = await res.json();
+      if (!data || !Array.isArray((data as any)?.features)) {
+        console.warn("[VectorWorldMap] Invalid GeoJSON payload, skipping init");
+        return;
+      }
 
       // Log: vypsat název každé země (česky) při načtení
       try {
@@ -239,7 +224,8 @@ export default function VectorWorldMap({
 
       // Klik na stát: vybarví zeleně a vypíše název v češtině
       map.on("click", "countries-fill", (e) => {
-        const feature = e.features && e.features[0];
+        const feats = Array.isArray(e?.features) ? e.features : [];
+        const feature = feats[0];
         if (!feature) return;
         const isoA2 = (feature.properties as any)?.ISO_A2 as string | undefined;
         const name =
@@ -268,7 +254,8 @@ export default function VectorWorldMap({
       // Hover efekt a kurzor - vylepšené pro všechny vrstvy
       const handleMouseMove = (e: any) => {
         map.getCanvas().style.cursor = "pointer";
-        const feature = e.features && e.features[0];
+        const feats = Array.isArray(e?.features) ? e.features : [];
+        const feature = feats[0];
         const id = feature?.id as number | string | undefined;
         if (id === undefined) return;
         if (hoveredIdRef.current !== null && hoveredIdRef.current !== id) {

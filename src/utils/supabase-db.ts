@@ -64,6 +64,26 @@ export const dbUtils = {
     return [];
   },
 
+  // Agregovaný počet navštívených zemí z tabulky user_country_counts (fallback na COUNT)
+  async getVisitedCount(userId: string): Promise<number> {
+    // Nejprve zkus agregovanou tabulku (pokud existuje a je plněna)
+    const { data, error } = await supabase
+      .from("user_country_counts")
+      .select("countries_count")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!error && data && typeof (data as any).countries_count === "number") {
+      return (data as any).countries_count as number;
+    }
+    // Fallback: přesný COUNT z relace
+    const { count, error: countErr } = await supabase
+      .from("user_visited_countries")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+    if (countErr) throw new Error(countErr.message);
+    return typeof count === "number" ? count : 0;
+  },
+
   // Uložení návštěvy dle ISO2 kódu do tabulky user_visited_countries
   async saveVisitIso(userId: string, iso2: string) {
     console.log("[DB] saveVisitIso start", { userId, iso2 });
@@ -168,24 +188,59 @@ export const dbUtils = {
   async getVisitedCountries(
     userId: string
   ): Promise<Array<{ iso2: string; name: string; id: string }>> {
-    // pokus o vnořený select s FK relací
-    const { data, error } = await supabase
-      .from("user_visited_countries")
-      .select("country_id, countries ( id, iso_code, name )")
-      .eq("user_id", userId);
-    if (error) {
-      console.warn("[DB] getVisitedCountries error:", error.message);
-      throw new Error(error.message);
-    }
-    const result: Array<{ iso2: string; name: string; id: string }> = [];
-    for (const row of (data as any[]) || []) {
-      const c = row.countries;
-      if (c?.iso_code) {
-        result.push({ iso2: c.iso_code, name: c.name ?? c.iso_code, id: c.id });
+    // Preferuj serverové API (admin klient) kvůli možným RLS omezením
+    try {
+      const res = await fetch(
+        `/api/visited?userId=${encodeURIComponent(userId)}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": userId,
+          },
+          cache: "no-store",
+        }
+      );
+      if (!res.ok) {
+        let message = `GET /api/visited ${res.status}`;
+        try {
+          const j = await res.json();
+          if (j?.error) message = j.error;
+        } catch {}
+        throw new Error(message);
       }
+      const j = (await res.json()) as {
+        ok: boolean;
+        data?: Array<{ iso2: string; name: string; id: string }>;
+      };
+      const result = Array.isArray(j?.data) ? j.data : [];
+      console.log("[DB] getVisitedCountries (api) count:", result.length);
+      return result;
+    } catch (apiErr) {
+      // Fallback: přímý select přes client (může selhat na RLS)
+      console.warn("[DB] getVisitedCountries: API fallback", apiErr);
+      const { data, error } = await supabase
+        .from("user_visited_countries")
+        .select("country_id, countries ( id, iso_code, name )")
+        .eq("user_id", userId);
+      if (error) {
+        console.warn("[DB] getVisitedCountries error:", error.message);
+        throw new Error(error.message);
+      }
+      const result: Array<{ iso2: string; name: string; id: string }> = [];
+      for (const row of (data as any[]) || []) {
+        const c = (row as any).countries;
+        if (c?.iso_code) {
+          result.push({
+            iso2: c.iso_code,
+            name: c.name ?? c.iso_code,
+            id: c.id,
+          });
+        }
+      }
+      console.log("[DB] getVisitedCountries (fallback) count:", result.length);
+      return result;
     }
-    console.log("[DB] getVisitedCountries count:", result.length);
-    return result;
   },
 
   async removeVisitIso(userId: string, iso2: string) {

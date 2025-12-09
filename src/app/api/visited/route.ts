@@ -4,6 +4,53 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
+export async function GET(req: Request) {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data: auth } = await supabase.auth.getUser();
+    const sessionUserId = auth?.user?.id;
+    const url = new URL(req.url);
+    const qpUserId = url.searchParams.get("userId") || undefined;
+    const fallbackUserId =
+      req.headers.get("x-user-id") || qpUserId || undefined;
+    // Preferuj explicitně předaný userId (hlavička/param) před session
+    const userId = fallbackUserId || sessionUserId;
+    if (!userId) {
+      return NextResponse.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const admin = createAdminSupabaseClient();
+    const { data, error } = await admin
+      .from("user_visited_countries")
+      .select("country_id, countries ( id, iso_code, name )")
+      .eq("user_id", userId);
+    if (error) {
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: 400 }
+      );
+    }
+    const result: Array<{ iso2: string; name: string; id: string }> = [];
+    for (const row of (data as any[]) || []) {
+      const c = (row as any).countries;
+      if (c?.iso_code) {
+        result.push({
+          iso2: c.iso_code,
+          name: c.name ?? c.iso_code,
+          id: c.id,
+        });
+      }
+    }
+    return NextResponse.json({ ok: true, data: result });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const supabase = await createServerSupabaseClient();
@@ -13,7 +60,8 @@ export async function POST(req: Request) {
     const qpUserId = url.searchParams.get("userId") || undefined;
     const fallbackUserId =
       req.headers.get("x-user-id") || qpUserId || undefined;
-    const userId = sessionUserId || fallbackUserId;
+    // Preferuj explicitně předaný userId (hlavička/param) před session
+    const userId = fallbackUserId || sessionUserId;
     if (!userId) {
       return NextResponse.json(
         { ok: false, error: "Unauthorized" },
@@ -93,6 +141,25 @@ export async function POST(req: Request) {
       );
     }
 
+    // Recalculate and upsert aggregate count for the user
+    try {
+      const { count } = await admin
+        .from("user_visited_countries")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId);
+      await admin.from("user_country_counts").upsert(
+        {
+          user_id: userId,
+          countries_count: typeof count === "number" ? count : 0,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
+    } catch (e) {
+      // swallow aggregate update error to not fail the main request
+      console.warn("[visited:POST] aggregate update failed", e);
+    }
+
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
@@ -105,15 +172,18 @@ export async function DELETE(req: Request) {
     const supabase = await createServerSupabaseClient();
     const { data: auth } = await supabase.auth.getUser();
     const sessionUserId = auth?.user?.id;
-    const fallbackUserId = req.headers.get("x-user-id") || undefined;
-    const userId = sessionUserId || fallbackUserId;
+    const url = new URL(req.url);
+    const qpUserId = url.searchParams.get("userId") || undefined;
+    const fallbackUserId =
+      req.headers.get("x-user-id") || qpUserId || undefined;
+    // Preferuj explicitně předaný userId (hlavička/param) před session
+    const userId = fallbackUserId || sessionUserId;
     if (!userId) {
       return NextResponse.json(
         { ok: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
-    const url = new URL(req.url);
     const iso2Param = url.searchParams.get("iso2");
     let iso2 = (iso2Param || "").toUpperCase();
     if (!iso2) {
@@ -181,6 +251,25 @@ export async function DELETE(req: Request) {
         { ok: false, error: delErr.message },
         { status: 400 }
       );
+    }
+
+    // Recalculate and upsert aggregate count for the user
+    try {
+      const { count } = await admin
+        .from("user_visited_countries")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId);
+      await admin.from("user_country_counts").upsert(
+        {
+          user_id: userId,
+          countries_count: typeof count === "number" ? count : 0,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" }
+      );
+    } catch (e) {
+      // swallow aggregate update error to not fail the main request
+      console.warn("[visited:DELETE] aggregate update failed", e);
     }
 
     return NextResponse.json({ ok: true });

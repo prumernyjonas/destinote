@@ -59,23 +59,9 @@ export default function PublicWorldMap({
     });
     mapRef.current = map;
 
-    const enableGlobe = () => {
-      try {
-        (map as any).setProjection?.("globe");
-        (map as any).setFog?.({
-          range: [0.5, 10],
-          color: "#dbeafe",
-          "horizon-blend": 0.2,
-        } as any);
-      } catch {
-        (map as any).setProjection?.("mercator");
-      }
-    };
-
-    map.on("style.load", enableGlobe);
+    // Nepoužíváme 3D/Globe projekci
 
     map.on("load", async () => {
-      enableGlobe();
       const res = await fetch(geojsonUrl);
       if (!res.ok) return;
       const data = await res.json();

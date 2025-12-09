@@ -17,6 +17,10 @@ type DashboardPublicWorldMapProps = {
   geojsonUrl?: string;
   // požadavek z parenta: odbarvit konkrétní ISO2 (nonce kvůli opakovanému volání)
   unvisitRequest?: { iso2: string; nonce: number };
+  // volitelné: informuj parenta po preloadu seznamu, aby si sjednotil počty
+  onVisitedPreload?: (
+    visited: Array<{ iso2: string; name: string; id: string }>
+  ) => void;
 };
 
 export default function DashboardPublicWorldMap({
@@ -24,6 +28,7 @@ export default function DashboardPublicWorldMap({
   onVisitSaved,
   geojsonUrl = "/countries.json",
   unvisitRequest,
+  onVisitedPreload,
 }: DashboardPublicWorldMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
@@ -34,6 +39,10 @@ export default function DashboardPublicWorldMap({
   useEffect(() => {
     onVisitSavedRef.current = onVisitSaved;
   }, [onVisitSaved]);
+  const onVisitedPreloadRef = useRef<typeof onVisitedPreload>(onVisitedPreload);
+  useEffect(() => {
+    onVisitedPreloadRef.current = onVisitedPreload;
+  }, [onVisitedPreload]);
 
   // set navštívených ISO2 (abychom věděli, jestli už to máme v DB)
   const visitedIsoRef = useRef<Set<string>>(new Set());
@@ -129,20 +138,7 @@ export default function DashboardPublicWorldMap({
       console.warn("[MAP] error:", e?.error || e);
     });
 
-    const enableGlobe = () => {
-      try {
-        (map as any).setProjection?.("globe");
-        (map as any).setFog?.({
-          range: [0.5, 10],
-          color: "#dbeafe",
-          "horizon-blend": 0.2,
-        } as any);
-      } catch {
-        (map as any).setProjection?.("mercator");
-      }
-    };
-
-    map.on("style.load", enableGlobe);
+    // Nepoužíváme 3D/Globe projekci
 
     // Idempotentní nastavení zdroje, vrstvy a handlerů
     const setupLayersAndHandlers = async () => {
@@ -214,6 +210,10 @@ export default function DashboardPublicWorldMap({
             );
             visitedIsoRef.current = visitedSet;
             setVisitedCount(visitedSet.size);
+            // Informuj parenta, ať si sjednotí počty a seznam pro header/list
+            try {
+              onVisitedPreloadRef.current?.(visited);
+            } catch {}
 
             const geojson: any = data;
             for (const f of (geojson?.features as any[]) || []) {
@@ -275,7 +275,8 @@ export default function DashboardPublicWorldMap({
           });
 
           const onClick = async (e: any) => {
-            const f = e.features && e.features[0];
+            const feats = Array.isArray(e?.features) ? e.features : [];
+            const f = feats[0];
             if (!f) return;
             const props: any = f.properties || {};
 
@@ -467,7 +468,9 @@ export default function DashboardPublicWorldMap({
           // Hover efekt
           map.on("mousemove", "countries-public-fill", (e: any) => {
             map.getCanvas().style.cursor = "pointer";
-            const id = e.features?.[0]?.id as number | string | undefined;
+            const feats = Array.isArray(e?.features) ? e.features : [];
+            const id =
+              (feats[0]?.id as number | string | undefined) ?? undefined;
             if (id === undefined) return;
             if (hoveredIdRef.current !== null && hoveredIdRef.current !== id) {
               map.setFeatureState(
@@ -501,13 +504,11 @@ export default function DashboardPublicWorldMap({
     };
 
     map.on("load", async () => {
-      enableGlobe();
       await setupLayersAndHandlers();
     });
 
     // Některé styly mohou vyvolat znovunačtení; zajistíme vrstvy i tehdy
     map.on("style.load", async () => {
-      enableGlobe();
       await setupLayersAndHandlers();
     });
 
@@ -564,7 +565,7 @@ export default function DashboardPublicWorldMap({
       </div>
       <div
         ref={containerRef}
-        className="w-full h-[60vh] min-h-[460px] rounded-xl overflow-hidden border border-slate-200 shadow-sm"
+        className="w-full h-[600px] min-h-[460px] rounded-xl overflow-hidden border border-slate-200 shadow-sm"
       />
     </div>
   );
