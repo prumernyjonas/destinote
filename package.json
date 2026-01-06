@@ -40,5 +40,10 @@
     "tailwindcss": "^4",
     "tsx": "^4.19.2",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "overrides": {
+      "maplibre-gl": "^5.15.0"
+    }
   }
 }
