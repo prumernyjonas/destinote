@@ -48,3 +48,46 @@ body {
 .maplibregl-popup .maplibregl-popup-close-button:hover {
   color: #000000;
 }
+
+/* Floating animation for globe */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float {
+    animation: none;
+  }
+}
+
+/* Globe hover effect - premium quality */
+.globe-hover {
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), filter 0.4s ease;
+  will-change: transform;
+}
+
+.globe-hover:hover {
+  transform: scale(1.03);
+  filter: brightness(1.05) drop-shadow(0 25px 50px rgba(0, 0, 0, 0.2));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .globe-hover {
+    transition: none;
+  }
+
+  .globe-hover:hover {
+    transform: none;
+    filter: none;
+  }
+}

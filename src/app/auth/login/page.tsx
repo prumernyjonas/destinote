@@ -31,7 +31,11 @@ export default function LoginPage() {
       setSubmitting(true);
       await login({ email, password });
       toast.success("Přihlášení proběhlo úspěšně.");
-      router.replace("/");
+      
+      // Zkontroluj redirect parametr z URL
+      const redirect = searchParams?.get("redirect");
+      const redirectPath = redirect && redirect.startsWith("/") ? redirect : "/";
+      router.replace(redirectPath);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Chyba při přihlášení");
       setLocalError(err instanceof Error ? err.message : "Neznámá chyba");
@@ -51,12 +55,14 @@ export default function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Pokud je uživatel již přihlášen (např. po návratu z OAuth), přesměruj na homepage
+  // Pokud je uživatel již přihlášen (např. po návratu z OAuth), přesměruj podle redirect parametru
   useEffect(() => {
     if (user) {
-      router.replace("/");
+      const redirect = searchParams?.get("redirect");
+      const redirectPath = redirect && redirect.startsWith("/") ? redirect : "/";
+      router.replace(redirectPath);
     }
-  }, [user, router]);
+  }, [user, router, searchParams]);
 
   const handleGoogleLogin = async () => {
     try {

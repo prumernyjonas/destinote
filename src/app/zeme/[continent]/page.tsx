@@ -10,7 +10,8 @@ function continentLabelFromSlug(slug: string): string {
   if (s === "evropa") return "Evropa";
   if (s === "afrika") return "Afrika";
   if (s === "australie") return "Austrálie & Oceánie";
-  if (s === "amerika") return "Amerika";
+  if (s === "severni-amerika") return "Severní Amerika";
+  if (s === "jizni-amerika") return "Jižní Amerika";
   if (s === "antarktida") return "Antarktida";
   return s.charAt(0).toUpperCase() + s.slice(1);
 }

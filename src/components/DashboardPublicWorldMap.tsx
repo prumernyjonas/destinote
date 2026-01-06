@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import maplibregl, { Map } from "maplibre-gl";
+import * as maptilersdk from "@maptiler/sdk";
+import "@maptiler/sdk/dist/maptiler-sdk.css";
 import countries from "i18n-iso-countries";
 import cs from "i18n-iso-countries/langs/cs.json";
 import { dbUtils } from "@/utils/supabase-db";
@@ -26,14 +27,15 @@ type DashboardPublicWorldMapProps = {
 export default function DashboardPublicWorldMap({
   userId,
   onVisitSaved,
-  geojsonUrl = "/countries.json",
+  geojsonUrl = "/countries-hd.json",
   unvisitRequest,
   onVisitedPreload,
 }: DashboardPublicWorldMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<Map | null>(null);
+  const mapRef = useRef<maptilersdk.Map | null>(null);
   const hoveredIdRef = useRef<number | string | null>(null);
-  const handlersAttachedRef = useRef<boolean>(false);
+  const clickHandlerRef = useRef<((e: any) => void) | null>(null);
+  const popupRef = useRef<maptilersdk.Popup | null>(null);
   const geojsonRef = useRef<any | null>(null);
   const onVisitSavedRef = useRef<typeof onVisitSaved>(onVisitSaved);
   useEffect(() => {
@@ -86,9 +88,9 @@ export default function DashboardPublicWorldMap({
 
   function getIso2FromProps(props: any): string | undefined {
     const rawName: string =
-      props?.NAME_LONG || props?.ADMIN || props?.NAME || "";
-    // 0) Preferovat ISO_A2 z dat (když je k dispozici a není "-99")
-    const isoA2Raw = props?.ISO_A2;
+      props?.NAME_LONG || props?.ADMIN || props?.NAME || props?.name || "";
+    // 0) Preferovat ISO_A2 / ISO3166-1-Alpha-2 z dat (když je k dispozici a není "-99")
+    const isoA2Raw = props?.ISO_A2 || props?.["ISO3166-1-Alpha-2"];
     if (
       typeof isoA2Raw === "string" &&
       /^[A-Za-z]{2}$/.test(isoA2Raw) &&
@@ -98,6 +100,7 @@ export default function DashboardPublicWorldMap({
     }
     const code3Candidates: Array<string | undefined> = [
       props?.ISO_A3,
+      props?.["ISO3166-1-Alpha-3"],
       props?.GU_A3,
       props?.SU_A3,
       props?.SOV_A3,
@@ -115,9 +118,11 @@ export default function DashboardPublicWorldMap({
   useEffect(() => {
     if (!containerRef.current) return;
     const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY;
-    const map = new maplibregl.Map({
+    maptilersdk.config.apiKey = apiKey || "";
+    const map = new maptilersdk.Map({
       container: containerRef.current,
-      style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${apiKey}&language=cs`,
+      style: maptilersdk.MapStyle.STREETS,
+      language: "cs",
       center: [15, 25],
       zoom: 2,
       fadeDuration: 0,
@@ -182,8 +187,11 @@ export default function DashboardPublicWorldMap({
           map.addSource("countries-public", {
             type: "geojson",
             data,
-            // V našem GeoJSONu chybí ISO_A2, použijeme stabilní kód ADM0_A3 jako ID feature
-            promoteId: "ADM0_A3",
+            // Použijeme ISO3166-1-Alpha-3 jako ID feature (pro countries-hd.json)
+            // Fallback na ADM0_A3 pro starší GeoJSON
+            promoteId: data.features?.[0]?.properties?.["ISO3166-1-Alpha-3"]
+              ? "ISO3166-1-Alpha-3"
+              : "ADM0_A3",
           } as any);
           console.log("[MAP] source ensured: countries-public");
 
@@ -224,6 +232,7 @@ export default function DashboardPublicWorldMap({
               if (!visitedSet.has(norm)) continue;
 
               const id3 =
+                props?.["ISO3166-1-Alpha-3"] ||
                 props?.ADM0_A3 ||
                 props?.ISO_A3 ||
                 props?.GU_A3 ||
@@ -267,237 +276,241 @@ export default function DashboardPublicWorldMap({
           console.log("[MAP] layer ensured: countries-public-fill");
         }
 
-        // Handlery pouze jednou
-        if (!handlersAttachedRef.current) {
-          const popup = new maplibregl.Popup({
+        // Vytvořit popup pouze jednou
+        if (!popupRef.current) {
+          popupRef.current = new maptilersdk.Popup({
             closeButton: true,
             closeOnClick: false,
           });
+        }
+        const popup = popupRef.current;
 
-          const onClick = async (e: any) => {
-            const feats = Array.isArray(e?.features) ? e.features : [];
-            const f = feats[0];
-            if (!f) return;
-            const props: any = f.properties || {};
+        const onClick = async (e: any) => {
+          const feats = Array.isArray(e?.features) ? e.features : [];
+          const f = feats[0];
+          if (!f) return;
+          const props: any = f.properties || {};
 
-            const rawName: string =
-              props.NAME_LONG || props.ADMIN || props.NAME || "";
-            const iso2 = getIso2FromProps(props);
-            const czName = iso2 ? countries.getName(iso2, "cs") : undefined;
-            const name: string = (czName || rawName || "").trim();
+          const rawName: string =
+            props.NAME_LONG || props.ADMIN || props.NAME || props.name || "";
+          const iso2 = getIso2FromProps(props);
+          const czName = iso2 ? countries.getName(iso2, "cs") : undefined;
+          const name: string = (czName || rawName || "").trim();
 
-            // Bez ISO2 nemá smysl ukládat
-            if (!iso2) {
-              console.warn("[VISITED] ISO2 není k dispozici, neukládám.");
-              return;
+          // Bez ISO2 nemá smysl ukládat
+          if (!iso2) {
+            console.warn("[VISITED] ISO2 není k dispozici, neukládám.");
+            return;
+          }
+
+          const upperIso2 = normalizeIso2(iso2);
+
+          // ID feature pro feature-state
+          const id3 =
+            props?.["ISO3166-1-Alpha-3"] ||
+            props?.ADM0_A3 ||
+            props?.ISO_A3 ||
+            props?.GU_A3 ||
+            props?.SU_A3 ||
+            props?.SOV_A3;
+
+          // Sestavit obsah popupu ve stejném stylu jako PublicWorldMap
+          const wrap = document.createElement("div");
+          wrap.style.minWidth = "220px";
+
+          const row = document.createElement("div");
+          row.style.display = "flex";
+          row.style.alignItems = "center";
+          row.style.gap = "8px";
+          row.style.marginBottom = "6px";
+
+          const flag = document.createElement("span");
+          flag.className = `fi fi-${upperIso2.toLowerCase()}`;
+          flag.style.fontSize = "20px";
+
+          const title = document.createElement("div");
+          title.style.fontWeight = "700";
+          title.style.fontSize = "16px";
+          title.textContent = name || upperIso2;
+
+          row.appendChild(flag);
+          row.appendChild(title);
+
+          const isVisited = visitedIsoRef.current.has(upperIso2);
+          const btn = document.createElement("button");
+          btn.style.display = "block";
+          btn.style.marginTop = "8px";
+          btn.style.fontWeight = "700";
+          btn.style.background = "transparent";
+          btn.style.borderRadius = "6px";
+          btn.style.padding = "6px 10px";
+          btn.style.cursor = "pointer";
+
+          const setBtnStyle = (visited: boolean) => {
+            if (visited) {
+              btn.textContent = "Odebrat zemi";
+              btn.style.color = "#dc2626";
+              btn.style.border = "1px solid #dc2626";
+            } else {
+              btn.textContent = "Označit jako navštívené";
+              btn.style.color = "#16a34a";
+              btn.style.border = "1px solid #16a34a";
             }
+          };
+          setBtnStyle(isVisited);
 
-            const upperIso2 = normalizeIso2(iso2);
+          btn.addEventListener("click", async (ev) => {
+            ev.stopPropagation();
+            if (typeof id3 !== "string" || id3 === "-99") return;
+            const currentlyVisited = visitedIsoRef.current.has(upperIso2);
+            // Optimistická změna barvy
+            try {
+              map.setFeatureState(
+                { source: "countries-public", id: id3 },
+                { visited: !currentlyVisited }
+              );
+            } catch {}
 
-            // ID feature pro feature-state
-            const id3 =
-              props?.ADM0_A3 ||
-              props?.ISO_A3 ||
-              props?.GU_A3 ||
-              props?.SU_A3 ||
-              props?.SOV_A3;
+            // Optimisticky upravit lokální set a počítadlo
+            if (currentlyVisited) {
+              visitedIsoRef.current.delete(upperIso2);
+              setVisitedCount((prev) => Math.max(0, prev - 1));
+            } else {
+              visitedIsoRef.current.add(upperIso2);
+              setVisitedCount((prev) => prev + 1);
+            }
+            setBtnStyle(!currentlyVisited);
 
-            // Sestavit obsah popupu ve stejném stylu jako PublicWorldMap
-            const wrap = document.createElement("div");
-            wrap.style.minWidth = "220px";
-
-            const row = document.createElement("div");
-            row.style.display = "flex";
-            row.style.alignItems = "center";
-            row.style.gap = "8px";
-            row.style.marginBottom = "6px";
-
-            const flag = document.createElement("span");
-            flag.className = `fi fi-${upperIso2.toLowerCase()}`;
-            flag.style.fontSize = "20px";
-
-            const title = document.createElement("div");
-            title.style.fontWeight = "700";
-            title.style.fontSize = "16px";
-            title.textContent = name || upperIso2;
-
-            row.appendChild(flag);
-            row.appendChild(title);
-
-            const isVisited = visitedIsoRef.current.has(upperIso2);
-            const btn = document.createElement("button");
-            btn.style.display = "block";
-            btn.style.marginTop = "8px";
-            btn.style.fontWeight = "700";
-            btn.style.background = "transparent";
-            btn.style.borderRadius = "6px";
-            btn.style.padding = "6px 10px";
-            btn.style.cursor = "pointer";
-
-            const setBtnStyle = (visited: boolean) => {
-              if (visited) {
-                btn.textContent = "Odebrat zemi";
-                btn.style.color = "#dc2626";
-                btn.style.border = "1px solid #dc2626";
+            try {
+              // Voláme serverové API (funguje i na localhost), předáme fallback user-id v hlavičce
+              if (currentlyVisited) {
+                const delRes = await fetch(
+                  `/api/visited?iso2=${upperIso2}&userId=${encodeURIComponent(
+                    userId
+                  )}`,
+                  {
+                    method: "DELETE",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "x-user-id": userId,
+                    },
+                  }
+                );
+                if (!delRes.ok) {
+                  let message = `DELETE /api/visited ${delRes.status}`;
+                  try {
+                    const j = await delRes.json();
+                    if (j?.error) message = j.error;
+                  } catch {}
+                  throw new Error(message);
+                }
               } else {
-                btn.textContent = "Označit jako navštívené";
-                btn.style.color = "#16a34a";
-                btn.style.border = "1px solid #16a34a";
+                const postRes = await fetch(
+                  `/api/visited?iso2=${upperIso2}&userId=${encodeURIComponent(
+                    userId
+                  )}`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "x-user-id": userId,
+                    },
+                    body: JSON.stringify({ iso2: upperIso2 }),
+                  }
+                );
+                if (!postRes.ok) {
+                  let message = `POST /api/visited ${postRes.status}`;
+                  try {
+                    const j = await postRes.json();
+                    if (j?.error) message = j.error;
+                  } catch {}
+                  throw new Error(message);
+                }
               }
-            };
-            setBtnStyle(isVisited);
-
-            btn.addEventListener("click", async (ev) => {
-              ev.stopPropagation();
-              if (typeof id3 !== "string" || id3 === "-99") return;
-              const currentlyVisited = visitedIsoRef.current.has(upperIso2);
-              // Optimistická změna barvy
+              onVisitSavedRef.current?.(upperIso2, name);
+              // Po úspěchu zavřít popup, aby nepřekážel dalším klikům
+              try {
+                popup.remove();
+              } catch {}
+            } catch (err) {
+              console.error("[VISITED] změna selhala, revertuji:", err);
+              // Revertovat feature-state
               try {
                 map.setFeatureState(
                   { source: "countries-public", id: id3 },
-                  { visited: !currentlyVisited }
+                  { visited: currentlyVisited }
                 );
               } catch {}
-
-              // Optimisticky upravit lokální set a počítadlo
+              // Revertovat lokální set/počet
               if (currentlyVisited) {
-                visitedIsoRef.current.delete(upperIso2);
-                setVisitedCount((prev) => Math.max(0, prev - 1));
-              } else {
+                // Původně byl visited, revertujeme odebrání
                 visitedIsoRef.current.add(upperIso2);
                 setVisitedCount((prev) => prev + 1);
+              } else {
+                visitedIsoRef.current.delete(upperIso2);
+                setVisitedCount((prev) => Math.max(0, prev - 1));
               }
-              setBtnStyle(!currentlyVisited);
-
-              try {
-                // Voláme serverové API (funguje i na localhost), předáme fallback user-id v hlavičce
-                if (currentlyVisited) {
-                  const delRes = await fetch(
-                    `/api/visited?iso2=${upperIso2}&userId=${encodeURIComponent(
-                      userId
-                    )}`,
-                    {
-                      method: "DELETE",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "x-user-id": userId,
-                      },
-                    }
-                  );
-                  if (!delRes.ok) {
-                    let message = `DELETE /api/visited ${delRes.status}`;
-                    try {
-                      const j = await delRes.json();
-                      if (j?.error) message = j.error;
-                    } catch {}
-                    throw new Error(message);
-                  }
-                } else {
-                  const postRes = await fetch(
-                    `/api/visited?iso2=${upperIso2}&userId=${encodeURIComponent(
-                      userId
-                    )}`,
-                    {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                        "x-user-id": userId,
-                      },
-                      body: JSON.stringify({ iso2: upperIso2 }),
-                    }
-                  );
-                  if (!postRes.ok) {
-                    let message = `POST /api/visited ${postRes.status}`;
-                    try {
-                      const j = await postRes.json();
-                      if (j?.error) message = j.error;
-                    } catch {}
-                    throw new Error(message);
-                  }
-                }
-                onVisitSavedRef.current?.(upperIso2, name);
-                // Po úspěchu zavřít popup, aby nepřekážel dalším klikům
-                try {
-                  popup.remove();
-                } catch {}
-              } catch (err) {
-                console.error("[VISITED] změna selhala, revertuji:", err);
-                // Revertovat feature-state
-                try {
-                  map.setFeatureState(
-                    { source: "countries-public", id: id3 },
-                    { visited: currentlyVisited }
-                  );
-                } catch {}
-                // Revertovat lokální set/počet
-                if (currentlyVisited) {
-                  // Původně byl visited, revertujeme odebrání
-                  visitedIsoRef.current.add(upperIso2);
-                  setVisitedCount((prev) => prev + 1);
-                } else {
-                  visitedIsoRef.current.delete(upperIso2);
-                  setVisitedCount((prev) => Math.max(0, prev - 1));
-                }
-                setBtnStyle(currentlyVisited);
-              }
-            });
-
-            wrap.appendChild(row);
-            wrap.appendChild(btn);
-            popup.setDOMContent(wrap).setLngLat(e.lngLat).addTo(map);
-          };
-
-          // Klik na vrstvě
-          map.on("click", "countries-public-fill", onClick);
-
-          // Fallback click na mapu (pro případy, kdy vrstva nechytí event)
-          map.on("click", (e) => {
-            try {
-              if (!map.getLayer("countries-public-fill")) return;
-              const feats = map.queryRenderedFeatures(e.point, {
-                layers: ["countries-public-fill"],
-              } as any);
-              const f = feats && feats[0];
-              if (!f) return;
-              onClick({ ...e, features: [f] });
-            } catch (err) {
-              console.warn("[MAP] global click fallback failed:", err);
+              setBtnStyle(currentlyVisited);
             }
           });
 
-          // Hover efekt
-          map.on("mousemove", "countries-public-fill", (e: any) => {
-            map.getCanvas().style.cursor = "pointer";
-            const feats = Array.isArray(e?.features) ? e.features : [];
-            const id =
-              (feats[0]?.id as number | string | undefined) ?? undefined;
-            if (id === undefined) return;
-            if (hoveredIdRef.current !== null && hoveredIdRef.current !== id) {
-              map.setFeatureState(
-                { source: "countries-public", id: hoveredIdRef.current },
-                { hover: false }
-              );
-            }
-            hoveredIdRef.current = id;
-            map.setFeatureState(
-              { source: "countries-public", id },
-              { hover: true }
-            );
-          });
+          wrap.appendChild(row);
+          wrap.appendChild(btn);
+          popup.setDOMContent(wrap).setLngLat(e.lngLat).addTo(map);
+        };
 
-          map.on("mouseleave", "countries-public-fill", () => {
-            map.getCanvas().style.cursor = "";
-            if (hoveredIdRef.current !== null) {
-              map.setFeatureState(
-                { source: "countries-public", id: hoveredIdRef.current },
-                { hover: false }
-              );
-              hoveredIdRef.current = null;
-            }
-          });
-
-          handlersAttachedRef.current = true;
+        // Klik na mapu - vždy registrovat na aktuální instanci
+        // Nejdřív odebrat starý handler pokud existuje
+        if (clickHandlerRef.current) {
+          try {
+            map.off("click", clickHandlerRef.current);
+          } catch {}
         }
+        const clickHandler = (e: any) => {
+          try {
+            if (!map.getLayer("countries-public-fill")) return;
+            const feats = map.queryRenderedFeatures(e.point, {
+              layers: ["countries-public-fill"],
+            } as any);
+            const f = feats && feats[0];
+            if (!f) return;
+            onClick({ ...e, features: [f] });
+          } catch (err) {
+            console.warn("[MAP] click handler failed:", err);
+          }
+        };
+        clickHandlerRef.current = clickHandler;
+        map.on("click", clickHandler);
+
+        // Hover efekt
+        map.on("mousemove", "countries-public-fill", (e: any) => {
+          map.getCanvas().style.cursor = "pointer";
+          const feats = Array.isArray(e?.features) ? e.features : [];
+          const id = (feats[0]?.id as number | string | undefined) ?? undefined;
+          if (id === undefined) return;
+          if (hoveredIdRef.current !== null && hoveredIdRef.current !== id) {
+            map.setFeatureState(
+              { source: "countries-public", id: hoveredIdRef.current },
+              { hover: false }
+            );
+          }
+          hoveredIdRef.current = id;
+          map.setFeatureState(
+            { source: "countries-public", id },
+            { hover: true }
+          );
+        });
+
+        map.on("mouseleave", "countries-public-fill", () => {
+          map.getCanvas().style.cursor = "";
+          if (hoveredIdRef.current !== null) {
+            map.setFeatureState(
+              { source: "countries-public", id: hoveredIdRef.current },
+              { hover: false }
+            );
+            hoveredIdRef.current = null;
+          }
+        });
       } catch (e) {
         console.warn("[MAP] setupLayersAndHandlers error:", e);
       }
@@ -509,10 +522,15 @@ export default function DashboardPublicWorldMap({
 
     // Některé styly mohou vyvolat znovunačtení; zajistíme vrstvy i tehdy
     map.on("style.load", async () => {
+      // Reset handlerů, protože při změně stylu se source/layer smaže
+      clickHandlerRef.current = null;
+      popupRef.current = null;
       await setupLayersAndHandlers();
     });
 
     return () => {
+      clickHandlerRef.current = null;
+      popupRef.current = null;
       map.remove();
     };
   }, [geojsonUrl, userId]);
@@ -537,6 +555,7 @@ export default function DashboardPublicWorldMap({
         if (!iso2) continue;
         if (normalizeIso2(iso2) !== targetIso) continue;
         const id3 =
+          props?.["ISO3166-1-Alpha-3"] ||
           props?.ADM0_A3 ||
           props?.ISO_A3 ||
           props?.GU_A3 ||
@@ -565,7 +584,7 @@ export default function DashboardPublicWorldMap({
       </div>
       <div
         ref={containerRef}
-        className="w-full h-[600px] min-h-[460px] rounded-xl overflow-hidden border border-slate-200 shadow-sm"
+        className="w-full h-150 min-h-115 rounded-xl overflow-hidden border border-slate-200 shadow-sm"
       />
     </div>
   );

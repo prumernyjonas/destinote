@@ -39,7 +39,8 @@ function continentLabelFromSlug(slug: string): string {
   if (s === "evropa") return "Evropa";
   if (s === "afrika") return "Afrika";
   if (s === "australie") return "Austrálie & Oceánie";
-  if (s === "amerika") return "Amerika";
+  if (s === "severni-amerika") return "Severní Amerika";
+  if (s === "jizni-amerika") return "Jižní Amerika";
   if (s === "antarktida") return "Antarktida";
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -129,14 +130,14 @@ export default async function CountryDetailPage({
           continent={continentLabel}
         />
       </div>
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <ArticlesTeaser title="Cestopisy a články" href="/community" />
         </div>
         <div>
           <FlightsWidget query={displayName} />
         </div>
-      </div>
+      </div> */}
     </main>
   );
 }

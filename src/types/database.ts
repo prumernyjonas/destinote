@@ -14,6 +14,7 @@ export interface Article {
   countryName: string;
   authorId: string;
   authorName: string;
+  status?: "draft" | "pending" | "approved" | "rejected" | string;
   createdAt: Date;
   updatedAt: Date;
   likes: number;
@@ -59,4 +60,33 @@ export interface FlightOffer {
   stops: number;
   duration: string;
   link: string;
+}
+
+// Sledování uživatelů
+export interface UserFollow {
+  followerId: string;
+  followingId: string;
+  createdAt: Date;
+}
+
+export interface PublicProfile {
+  id: string;
+  nickname: string;
+  displayName: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  countriesVisited: number;
+  articlesWritten: number;
+  followersCount: number;
+  followingCount: number;
+  isFollowedByMe: boolean;
+  isFollowingMe: boolean;
+}
+
+export interface FollowListItem {
+  id: string;
+  nickname: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isFollowedByMe: boolean;
 }

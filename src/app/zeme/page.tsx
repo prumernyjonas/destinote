@@ -5,7 +5,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 
 const continents = [
   { key: "afrika", label: "Afrika" },
-  { key: "amerika", label: "Amerika" },
+  { key: "severni-amerika", label: "Severní Amerika" },
+  { key: "jizni-amerika", label: "Jižní Amerika" },
   { key: "asie", label: "Asie" },
   { key: "australie", label: "Austrálie & Oceánie" },
   { key: "evropa", label: "Evropa" },
@@ -47,7 +48,7 @@ export default function CountriesIndexPage() {
           ))}
         </section>
 
-        <section className="space-y-4">
+        {/* <section className="space-y-4">
           <h2 className="text-xl font-bold text-gray-900">Nejnovější články</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
@@ -65,7 +66,7 @@ export default function CountriesIndexPage() {
               </Card>
             ))}
           </div>
-        </section>
+        </section> */}
       </div>
     </main>
   );

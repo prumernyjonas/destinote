@@ -6,24 +6,26 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "seed:countries": "node scripts/seed-countries.cjs",
-    "export:countries": "node scripts/export-countries-csv.cjs"
+    "lint": "eslint"
   },
   "dependencies": {
-    "@prisma/client": "^6.16.2",
+    "@maptiler/sdk": "^3.9.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.74.0",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
     "flag-icons": "^7.5.0",
+    "framer-motion": "^12.24.0",
     "i18n-iso-countries": "^7.14.0",
+    "lottie-react": "^2.4.1",
     "maplibre-gl": "^5.7.0",
     "next": "15.5.2",
     "next-cloudinary": "^6.16.0",
+    "openai": "^6.14.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-icons": "^5.5.0",
-    "react-simple-maps": "^3.0.0",
+    "slugify": "^1.6.6",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
@@ -35,8 +37,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.2",
-    "prisma": "^6.16.2",
     "tailwindcss": "^4",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   }
 }

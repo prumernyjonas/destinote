@@ -24,7 +24,7 @@ export function BadgesGrid({ badges }: BadgesGridProps) {
                 key={badge.id}
                 className={`text-center p-4 border rounded-lg ${
                   badge.earnedAt ? "" : "opacity-50"
-                }`}
+                } cursor-pointer`}
               >
                 <div className="text-3xl mb-2">{badge.icon}</div>
                 <h3 className="font-medium text-gray-900">{badge.name}</h3>

@@ -3,6 +3,8 @@ export interface User {
   uid: string;
   email: string;
   displayName: string;
+  nickname?: string;
+  nicknameSlug?: string; // URL-friendly verze nickname (bez diakritiky)
   photoURL?: string;
   createdAt: Date;
   lastLoginAt: Date;

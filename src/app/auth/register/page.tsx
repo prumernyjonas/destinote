@@ -39,7 +39,8 @@ export default function RegisterPage() {
     try {
       await register(formData);
       toast.success("Registrace proběhla úspěšně.");
-      router.push("/dashboard");
+      // Po registraci přesměruj na homepage - uživatel se pak přihlásí a půjde na profil
+      router.push("/");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Chyba při registraci");
       setLocalError(err instanceof Error ? err.message : "Neznámá chyba");

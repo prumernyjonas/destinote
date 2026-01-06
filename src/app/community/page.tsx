@@ -1,13 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import Link from "next/link";
+import Image from "next/image";
+
+type Article = {
+  id: string;
+  title: string;
+  main_image_url: string | null;
+  main_image_alt: string | null;
+  slug: string;
+  published_at: string | null;
+  created_at: string;
+};
 
 export default function CommunityPage() {
-  const [tab, setTab] = useState<"feed" | "top" | "following">("feed");
+  const [tab, setTab] = useState<"feed" | "top" | "following" | "friends">(
+    "feed"
+  );
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    async function loadArticles() {
+      setLoading(true);
+      setError(null);
+      try {
+        let url = "/api/articles";
+
+        // Přidat query parametry podle zvoleného tabu
+        if (tab === "following" && user) {
+          url = `/api/articles?following=true&userId=${user.uid}`;
+        } else if (tab === "friends" && user) {
+          url = `/api/articles?friends=true&userId=${user.uid}`;
+        }
+
+        const res = await fetch(url);
+        if (!res.ok) {
+          if (res.status === 401 && (tab === "following" || tab === "friends")) {
+            throw new Error("Pro zobrazení článků od sledovaných je potřeba přihlášení");
+          }
+          throw new Error("Nepodařilo se načíst články");
+        }
+        const data = await res.json();
+        setArticles(data.items || []);
+      } catch (e: any) {
+        setError(e.message || "Chyba při načítání článků");
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadArticles();
+  }, [tab, user]);
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -25,7 +76,9 @@ export default function CommunityPage() {
           </div>
           <div className="flex gap-2">
             <Button variant="secondary">Filtrovat</Button>
-            <Button>Nový příspěvek</Button>
+            <Link href="/clanek/novy">
+              <Button>Nový článek</Button>
+            </Link>
           </div>
         </div>
 
@@ -34,6 +87,7 @@ export default function CommunityPage() {
             { key: "feed", label: "Feed" },
             { key: "top", label: "Top" },
             { key: "following", label: "Sleduji" },
+            { key: "friends", label: "Přátelé" },
           ].map((t) => (
             <button
               key={t.key}
@@ -49,46 +103,79 @@ export default function CommunityPage() {
           ))}
         </nav>
 
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-4">
-            {[...Array(4)].map((_, i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <CardTitle>
-                    <Skeleton className="h-6 w-3/5" />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6" />
-                  <Skeleton className="h-4 w-4/6" />
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+            {error}
+          </div>
+        )}
+
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {loading ? (
+            // Loading skeletons
+            [...Array(6)].map((_, i) => (
+              <Card key={i} className="overflow-hidden">
+                <Skeleton className="w-full h-48" />
+                <CardContent className="p-4">
+                  <Skeleton className="h-6 w-3/4 mb-2" />
                 </CardContent>
               </Card>
-            ))}
-          </div>
-          <aside className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Trending destinace</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-4 w-full" />
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Top autoři</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-4 w-full" />
-                ))}
-              </CardContent>
-            </Card>
-          </aside>
+            ))
+          ) : articles.length === 0 ? (
+            <div className="col-span-full text-center py-12 text-gray-600">
+              {tab === "following" && !user ? (
+                <div>
+                  <p className="mb-4">Pro zobrazení článků od sledovaných se přihlaste.</p>
+                  <Link href="/auth/login">
+                    <Button>Přihlásit se</Button>
+                  </Link>
+                </div>
+              ) : tab === "following" ? (
+                <p>Zatím nesledujete nikoho, kdo by měl schválené články.</p>
+              ) : tab === "friends" && !user ? (
+                <div>
+                  <p className="mb-4">Pro zobrazení článků od přátel se přihlaste.</p>
+                  <Link href="/auth/login">
+                    <Button>Přihlásit se</Button>
+                  </Link>
+                </div>
+              ) : tab === "friends" ? (
+                <p>Zatím nemáte žádné přátele (vzájemné sledování) s články.</p>
+              ) : (
+                <p>Zatím nejsou žádné schválené články.</p>
+              )}
+            </div>
+          ) : (
+            articles.map((article) => (
+              <Link
+                key={article.id}
+                href={`/clanek/${article.slug}`}
+                className="block"
+              >
+                <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer h-full flex flex-col">
+                  {article.main_image_url ? (
+                    <div className="relative w-full h-48 bg-gray-200">
+                      <Image
+                        src={article.main_image_url}
+                        alt={article.main_image_alt || article.title}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
+                      <span className="text-gray-400 text-sm">Bez obrázku</span>
+                    </div>
+                  )}
+                  <CardContent className="p-4 flex-1 flex flex-col">
+                    <h3 className="font-semibold text-lg text-gray-900 line-clamp-2">
+                      {article.title}
+                    </h3>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))
+          )}
         </section>
       </div>
     </main>

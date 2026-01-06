@@ -1,6 +1,6 @@
 // src/components/guides/CountryGuide.tsx
-import { generateCountryGuide } from "@/lib/ai/generateGuides";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type Props = {
   name: string;
@@ -8,52 +8,81 @@ type Props = {
   continent: string;
 };
 
+type StoredSection = {
+  id: string;
+  title: string;
+  text: string;
+};
+
+type StoredGuide = {
+  intro: string;
+  sections: StoredSection[];
+};
+
+async function fetchStoredGuide(iso2?: string): Promise<StoredGuide | null> {
+  if (!iso2) return null;
+  try {
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase
+      .from("ai_guides")
+      .select("content")
+      .eq("scope", "country")
+      .eq("key", iso2.toUpperCase())
+      .maybeSingle();
+    if (error || !data?.content) return null;
+    return data.content as StoredGuide;
+  } catch {
+    return null;
+  }
+}
+
 export default async function CountryGuide({ name, iso2, continent }: Props) {
-  const guide = await generateCountryGuide({ name, iso2, continent });
+  const guide = await fetchStoredGuide(iso2);
+
+  if (!guide) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Průvodce</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-800">
+            Průvodce pro {name} zatím nemáme. Zkuste to prosím později.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <Card className="lg:col-span-2">
+    <div className="space-y-6">
+      <Card>
         <CardHeader>
           <CardTitle>Průvodce</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-gray-800">{guide.overview}</p>
-          <div>
-            <div className="font-semibold text-gray-900 mb-2">Top tipy</div>
-            <ul className="list-disc list-inside space-y-1 text-gray-800">
-              {guide.topTips.map((t, i) => (
-                <li key={i}>{t}</li>
-              ))}
-            </ul>
+          <div className="space-y-2">
+            <div className="font-semibold text-gray-900">Úvod</div>
+            <p className="text-gray-800 whitespace-pre-line">{guide.intro}</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {guide.sections?.map((section) => (
+              <Card key={section.id} className="h-full">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold text-gray-900">
+                    {section.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-800 whitespace-pre-line">
+                    {section.text}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </CardContent>
       </Card>
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Kdy jet</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-800">{guide.bestTimeToVisit}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Bezpečnost</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-800">{guide.safety}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Doprava</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-800">{guide.gettingAround}</p>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

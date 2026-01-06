@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase/client";
 import { User, LoginCredentials, RegisterCredentials } from "@/types/auth";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { slugifyNickname } from "./slugify";
 
 const LOCAL_STORAGE_USER_KEY = "destinote.auth.user";
 
@@ -21,6 +22,8 @@ function deserializeUser(value: string | null): User | null {
       uid: string;
       email: string;
       displayName: string;
+      nickname?: string;
+      nicknameSlug?: string;
       photoURL?: string;
       createdAt: string;
       lastLoginAt: string;
@@ -29,6 +32,8 @@ function deserializeUser(value: string | null): User | null {
       uid: raw.uid,
       email: raw.email,
       displayName: raw.displayName,
+      nickname: raw.nickname,
+      nicknameSlug: raw.nicknameSlug,
       photoURL: raw.photoURL,
       createdAt: new Date(raw.createdAt),
       lastLoginAt: new Date(raw.lastLoginAt),
@@ -38,20 +43,26 @@ function deserializeUser(value: string | null): User | null {
   }
 }
 
-function mapSupabaseUserToAppUser(sbUser: SupabaseUser): User {
+function mapSupabaseUserToAppUser(sbUser: SupabaseUser, dbNickname?: string): User {
+  const meta = (sbUser.user_metadata as any) || {};
   const displayName =
-    (sbUser.user_metadata as any)?.displayName ||
-    (sbUser.user_metadata as any)?.name ||
+    meta.displayName ||
+    meta.full_name ||
+    meta.name ||
+    meta.user_name ||
     (sbUser.email ? sbUser.email.split("@")[0] : "");
-  const photoURL =
-    (sbUser.user_metadata as any)?.avatar_url ||
-    (sbUser.user_metadata as any)?.picture ||
-    "";
+  const photoURL = meta.avatar_url || meta.picture || "";
+  // Nickname z DB má přednost, pak z metadata
+  const nickname = dbNickname || meta.nickname || undefined;
+  // Slugifikovaná verze pro URL
+  const nicknameSlug = nickname ? slugifyNickname(nickname) : undefined;
 
   return {
     uid: sbUser.id,
     email: sbUser.email || "",
     displayName,
+    nickname,
+    nicknameSlug,
     photoURL,
     createdAt: new Date(sbUser.created_at),
     lastLoginAt: new Date(),
@@ -207,7 +218,20 @@ export const authUtils = {
       this.clearSupabaseStorage();
       return null;
     }
-    const user = mapSupabaseUserToAppUser(sbUser);
+    
+    // Načíst nickname z API (obejde RLS)
+    let dbNickname: string | undefined;
+    try {
+      const res = await fetch(`/api/users/${sbUser.id}`);
+      if (res.ok) {
+        const json = await res.json();
+        dbNickname = json.data?.nickname;
+      }
+    } catch {
+      // Ignorovat chybu - použije se fallback
+    }
+    
+    const user = mapSupabaseUserToAppUser(sbUser, dbNickname);
     // Udržovat cache synchronní se stavem Supabase
     this.setCachedUser(user);
     return user;

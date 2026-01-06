@@ -14,10 +14,10 @@ export default function CountryDetailPage() {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
               <Link
-                href="/dashboard"
+                href="/"
                 className="text-gray-500 hover:text-gray-700"
               >
-                ← Zpět na dashboard
+                ← Zpět na hlavní stránku
               </Link>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Thajsko</h1>

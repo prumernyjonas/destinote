@@ -4,26 +4,39 @@ import { UserStats, Article, Badge } from "@/types/database";
 
 export const dbUtils = {
   async getUserStats(uid: string): Promise<UserStats> {
-    const { data, error } = await supabase
+    // Načíst reálné počty sledujících a sledovaných z user_follows
+    const [followersRes, followingRes] = await Promise.all([
+      supabase
+        .from("user_follows")
+        .select("*", { count: "exact", head: true })
+        .eq("following_id", uid),
+      supabase
+        .from("user_follows")
+        .select("*", { count: "exact", head: true })
+        .eq("follower_id", uid),
+    ]);
+
+    const followersCount = followersRes.count ?? 0;
+    const followingCount = followingRes.count ?? 0;
+
+    // Zkusit načíst ostatní statistiky z user_stats view (pokud existuje)
+    const { data } = await supabase
       .from("user_stats")
       .select(
-        "countriesVisited, continentsVisited, articlesWritten, badgesEarned, level, followers, following"
+        "countriesVisited, continentsVisited, articlesWritten, badgesEarned, level"
       )
       .eq("id", uid)
       .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!data) {
-      return {
-        countriesVisited: 0,
-        continentsVisited: 0,
-        articlesWritten: 0,
-        badgesEarned: 0,
-        level: 1,
-        followers: 0,
-        following: 0,
-      };
-    }
-    return data as unknown as UserStats;
+
+    return {
+      countriesVisited: (data as any)?.countriesVisited ?? 0,
+      continentsVisited: (data as any)?.continentsVisited ?? 0,
+      articlesWritten: (data as any)?.articlesWritten ?? 0,
+      badgesEarned: (data as any)?.badgesEarned ?? 0,
+      level: (data as any)?.level ?? 1,
+      followers: followersCount,
+      following: followingCount,
+    };
   },
 
   async getArticles(countryId?: string): Promise<Article[]> {
@@ -32,7 +45,7 @@ export const dbUtils = {
     let query = supabase
       .from("articles")
       .select(
-        "id, title, content, destination_id, author_id, created_at, updated_at, likes_count, comments_count"
+        "id, title, content, destination_id, author_id, status, created_at, updated_at, likes_count, comments_count"
       )
       .order("created_at", { ascending: false })
       .limit(50);
@@ -49,6 +62,7 @@ export const dbUtils = {
       countryName: "Neznámá země",
       authorId: row.author_id || "",
       authorName: "",
+      status: row.status || "draft",
       createdAt: row.created_at ? new Date(row.created_at) : new Date(),
       updatedAt: row.updated_at ? new Date(row.updated_at) : new Date(),
       likes: typeof row.likes_count === "number" ? row.likes_count : 0,
@@ -86,7 +100,6 @@ export const dbUtils = {
 
   // Uložení návštěvy dle ISO2 kódu do tabulky user_visited_countries
   async saveVisitIso(userId: string, iso2: string) {
-    console.log("[DB] saveVisitIso start", { userId, iso2 });
     const wantedIso = iso2.toUpperCase();
     const altIsoCandidates: Record<string, string[]> = {
       FR: ["FX"], // Metropolitan France fallback
@@ -159,14 +172,8 @@ export const dbUtils = {
       }
     }
     if (!countryId) {
-      console.warn(
-        "[DB] countries lookup: not found for iso2:",
-        wantedIso,
-        lastErr || ""
-      );
       throw new Error("Země s daným ISO kódem nebyla nalezena");
     }
-    console.log("[DB] countries lookup OK:", { iso2: wantedIso, countryId });
 
     // 2) Upsert do user_visited_countries podle složeného klíče
     const { error } = await supabase.from("user_visited_countries").upsert(
@@ -178,10 +185,8 @@ export const dbUtils = {
       { onConflict: "user_id,country_id" }
     );
     if (error) {
-      console.warn("[DB] upsert user_visited_countries error:", error.message);
       throw new Error(error.message);
     }
-    console.log("[DB] upsert user_visited_countries OK");
   },
 
   // Načtení navštívených zemí uživatele jako seznam ISO2 + názvů
@@ -214,17 +219,14 @@ export const dbUtils = {
         data?: Array<{ iso2: string; name: string; id: string }>;
       };
       const result = Array.isArray(j?.data) ? j.data : [];
-      console.log("[DB] getVisitedCountries (api) count:", result.length);
       return result;
     } catch (apiErr) {
       // Fallback: přímý select přes client (může selhat na RLS)
-      console.warn("[DB] getVisitedCountries: API fallback", apiErr);
       const { data, error } = await supabase
         .from("user_visited_countries")
         .select("country_id, countries ( id, iso_code, name )")
         .eq("user_id", userId);
       if (error) {
-        console.warn("[DB] getVisitedCountries error:", error.message);
         throw new Error(error.message);
       }
       const result: Array<{ iso2: string; name: string; id: string }> = [];
@@ -238,7 +240,6 @@ export const dbUtils = {
           });
         }
       }
-      console.log("[DB] getVisitedCountries (fallback) count:", result.length);
       return result;
     }
   },
@@ -282,6 +283,68 @@ export const dbUtils = {
       .delete()
       .eq("user_id", userId)
       .eq("country_id", countryId);
+    if (error) throw new Error(error.message);
+  },
+
+  // === Sledování uživatelů ===
+
+  async getFollowCounts(
+    userId: string
+  ): Promise<{ followers: number; following: number }> {
+    const [followersRes, followingRes] = await Promise.all([
+      supabase
+        .from("user_follows")
+        .select("*", { count: "exact", head: true })
+        .eq("following_id", userId),
+      supabase
+        .from("user_follows")
+        .select("*", { count: "exact", head: true })
+        .eq("follower_id", userId),
+    ]);
+
+    return {
+      followers: followersRes.count ?? 0,
+      following: followingRes.count ?? 0,
+    };
+  },
+
+  async isFollowing(
+    currentUserId: string,
+    targetUserId: string
+  ): Promise<boolean> {
+    const { data } = await supabase
+      .from("user_follows")
+      .select("follower_id")
+      .eq("follower_id", currentUserId)
+      .eq("following_id", targetUserId)
+      .maybeSingle();
+    return !!data;
+  },
+
+  async followUser(currentUserId: string, targetUserId: string): Promise<void> {
+    if (currentUserId === targetUserId) {
+      throw new Error("Nemůžete sledovat sami sebe");
+    }
+    const { error } = await supabase.from("user_follows").upsert(
+      {
+        follower_id: currentUserId,
+        following_id: targetUserId,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "follower_id,following_id" }
+    );
+    if (error) throw new Error(error.message);
+  },
+
+  async unfollowUser(
+    currentUserId: string,
+    targetUserId: string
+  ): Promise<void> {
+    const { error } = await supabase
+      .from("user_follows")
+      .delete()
+      .eq("follower_id", currentUserId)
+      .eq("following_id", targetUserId);
     if (error) throw new Error(error.message);
   },
 };
