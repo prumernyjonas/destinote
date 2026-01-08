@@ -250,7 +250,12 @@ export default function PublicWorldMap({
     if (!containerRef.current) return;
 
     // Nastavení API klíče a jazyka pro MapTiler SDK
-    const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY || "";
+    // Trim whitespace, aby se předešlo chybám 403
+    const apiKey = (process.env.NEXT_PUBLIC_MAPTILER_KEY || "").trim();
+    if (!apiKey) {
+      console.error("[PublicWorldMap] NEXT_PUBLIC_MAPTILER_KEY není nastaven!");
+      return;
+    }
     maptilersdk.config.apiKey = apiKey;
 
     const map = new maptilersdk.Map({

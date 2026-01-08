@@ -17,7 +17,12 @@ export default function CountryMap({ iso2, countryName }: CountryMapProps) {
     if (!containerRef.current) return;
 
     // Nastavení API klíče a jazyka pro MapTiler SDK
-    const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY || "";
+    // Trim whitespace, aby se předešlo chybám 403
+    const apiKey = (process.env.NEXT_PUBLIC_MAPTILER_KEY || "").trim();
+    if (!apiKey) {
+      console.error("[CountryMap] NEXT_PUBLIC_MAPTILER_KEY není nastaven!");
+      return;
+    }
     maptilersdk.config.apiKey = apiKey;
 
     // Získání center země podle ISO2 kódu

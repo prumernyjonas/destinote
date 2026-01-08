@@ -22,7 +22,12 @@ export default function VectorWorldMap({
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+    // Trim whitespace, aby se předešlo chybám 403
+    const apiKey = (process.env.NEXT_PUBLIC_MAPTILER_KEY || "").trim();
+    if (!apiKey) {
+      console.error("[VectorWorldMap] NEXT_PUBLIC_MAPTILER_KEY není nastaven!");
+      return;
+    }
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: `https://api.maptiler.com/maps/streets-v2/style.json?key=${apiKey}&language=cs`,

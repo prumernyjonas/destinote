@@ -117,8 +117,15 @@ export default function DashboardPublicWorldMap({
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY;
-    maptilersdk.config.apiKey = apiKey || "";
+    // Trim whitespace, aby se předešlo chybám 403
+    const apiKey = (process.env.NEXT_PUBLIC_MAPTILER_KEY || "").trim();
+    if (!apiKey) {
+      console.error(
+        "[DashboardPublicWorldMap] NEXT_PUBLIC_MAPTILER_KEY není nastaven!"
+      );
+      return;
+    }
+    maptilersdk.config.apiKey = apiKey;
     const map = new maptilersdk.Map({
       container: containerRef.current,
       style: maptilersdk.MapStyle.STREETS,

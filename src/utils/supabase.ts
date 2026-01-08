@@ -43,7 +43,10 @@ function deserializeUser(value: string | null): User | null {
   }
 }
 
-function mapSupabaseUserToAppUser(sbUser: SupabaseUser, dbNickname?: string): User {
+function mapSupabaseUserToAppUser(
+  sbUser: SupabaseUser,
+  dbNickname?: string
+): User {
   const meta = (sbUser.user_metadata as any) || {};
   const displayName =
     meta.displayName ||
@@ -75,9 +78,10 @@ export const authUtils = {
     return deserializeUser(localStorage.getItem(LOCAL_STORAGE_USER_KEY));
   },
   async loginWithGoogle(): Promise<void> {
+    // Použijeme /auth/callback jako redirect URI (to je endpoint, který zpracovává OAuth callback)
     const redirectTo =
       typeof window !== "undefined"
-        ? `${window.location.origin}/auth/login`
+        ? `${window.location.origin}/auth/callback`
         : undefined;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -218,7 +222,7 @@ export const authUtils = {
       this.clearSupabaseStorage();
       return null;
     }
-    
+
     // Načíst nickname z API (obejde RLS)
     let dbNickname: string | undefined;
     try {
@@ -230,7 +234,7 @@ export const authUtils = {
     } catch {
       // Ignorovat chybu - použije se fallback
     }
-    
+
     const user = mapSupabaseUserToAppUser(sbUser, dbNickname);
     // Udržovat cache synchronní se stavem Supabase
     this.setCachedUser(user);
