@@ -617,10 +617,10 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Leaderboard */}
-            <Card className="border border-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+          {/* 
+          <div className="space-y-6"> */}
+          {/* Leaderboard */}
+          {/* <Card className="border border-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
               <CardHeader className="bg-emerald-600 text-white rounded-t-lg">
                 <CardTitle className="flex items-center gap-2">
                   <FiAward />
@@ -669,10 +669,10 @@ export default function Home() {
                   </Button>
                 </Link>
               </CardContent>
-            </Card>
+            </Card> */}
 
-            {/* Flights */}
-            <div className="space-y-4">
+          {/* Flights */}
+          {/* <div className="space-y-4">
               <FlightsWidget origin="PRG" limit={6} showTitle={true} />
               <Link href="/flights">
                 <Button
@@ -682,8 +682,8 @@ export default function Home() {
                   Více destinací
                 </Button>
               </Link>
-            </div>
-          </div>
+            </div> */}
+          {/* </div> */}
         </div>
       </section>
 

@@ -18,18 +18,25 @@ function slugifyNickname(str: string): string {
 function getBaseUrl(req: NextRequest): string {
   // Zkus získat origin z headers (funguje na Vercelu i jiných hostitelech)
   const host = req.headers.get("host");
-  const protocol = req.headers.get("x-forwarded-proto") || "https";
-  
+  const protocol =
+    req.headers.get("x-forwarded-proto") ||
+    (req.headers.get("x-forwarded-ssl") === "on" ? "https" : "http");
+
   if (host) {
     // Pokud je to localhost, použij http, jinak https
-    const isLocalhost = host.includes("localhost") || host.includes("127.0.0.1");
+    const isLocalhost =
+      host.includes("localhost") || host.includes("127.0.0.1");
     return isLocalhost ? `http://${host}` : `${protocol}://${host}`;
   }
-  
-  // Fallback na environment proměnnou nebo localhost
-  return process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}` 
-    : "http://localhost:3000";
+
+  // Fallback: použij origin z req.url (vždy obsahuje správnou doménu)
+  try {
+    const url = new URL(req.url);
+    return url.origin;
+  } catch {
+    // Poslední fallback
+    return "http://localhost:3000";
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -60,7 +67,9 @@ export async function GET(req: NextRequest) {
           .eq("id", userId)
           .single();
         // Slugifikovat nickname pro URL (bez diakritiky, malá písmena)
-        const slug = userData?.nickname ? slugifyNickname(userData.nickname) : userId;
+        const slug = userData?.nickname
+          ? slugifyNickname(userData.nickname)
+          : userId;
         return NextResponse.redirect(new URL(`/profil/${slug}`, baseUrl));
       }
     }
@@ -68,11 +77,11 @@ export async function GET(req: NextRequest) {
   } catch (err: any) {
     return NextResponse.redirect(
       new URL(
-        `/auth/login?error=${encodeURIComponent(err?.message || "OAuth chyba")}`,
+        `/auth/login?error=${encodeURIComponent(
+          err?.message || "OAuth chyba"
+        )}`,
         baseUrl
       )
     );
   }
 }
-
-

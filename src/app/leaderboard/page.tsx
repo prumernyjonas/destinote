@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -23,109 +23,6 @@ type LeaderboardEntry = {
   updatedAt: string; // ISO string
 };
 
-const mockData: LeaderboardEntry[] = [
-  {
-    id: "u1",
-    rank: 1,
-    displayName: "Anna K.",
-    avatarUrl: "https://i.pravatar.cc/80?img=11",
-    score: 4820,
-    countryCount: 27,
-    badges: ["🌍", "🏔️", "🏝️"],
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "u2",
-    rank: 2,
-    displayName: "Martin S.",
-    avatarUrl: "https://i.pravatar.cc/80?img=22",
-    score: 4510,
-    countryCount: 24,
-    badges: ["🌍", "🏙️"],
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "u3",
-    rank: 3,
-    displayName: "Lucie P.",
-    avatarUrl: "https://i.pravatar.cc/80?img=33",
-    score: 4260,
-    countryCount: 22,
-    badges: ["🏝️"],
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "u4",
-    rank: 4,
-    displayName: "Tomáš V.",
-    avatarUrl: "https://i.pravatar.cc/80?img=44",
-    score: 3890,
-    countryCount: 20,
-    badges: ["🌋"],
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "u5",
-    rank: 5,
-    displayName: "Ema R.",
-    avatarUrl: "https://i.pravatar.cc/80?img=55",
-    score: 3720,
-    countryCount: 19,
-    badges: ["🏔️"],
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "u6",
-    rank: 6,
-    displayName: "Petr N.",
-    avatarUrl: "https://i.pravatar.cc/80?img=66",
-    score: 3610,
-    countryCount: 18,
-    badges: [],
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "u7",
-    rank: 7,
-    displayName: "Kateřina Z.",
-    avatarUrl: "https://i.pravatar.cc/80?img=77",
-    score: 3540,
-    countryCount: 17,
-    badges: [],
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "u8",
-    rank: 8,
-    displayName: "Jirka D.",
-    avatarUrl: "https://i.pravatar.cc/80?img=88",
-    score: 3490,
-    countryCount: 16,
-    badges: ["🏙️"],
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "u9",
-    rank: 9,
-    displayName: "Barbora T.",
-    avatarUrl: "https://i.pravatar.cc/80?img=99",
-    score: 3410,
-    countryCount: 16,
-    badges: [],
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "u10",
-    rank: 10,
-    displayName: "Filip H.",
-    avatarUrl: "https://i.pravatar.cc/80?img=5",
-    score: 3320,
-    countryCount: 15,
-    badges: ["🌍"],
-    updatedAt: new Date().toISOString(),
-  },
-];
-
 function formatNumber(num: number) {
   return new Intl.NumberFormat("cs-CZ").format(num);
 }
@@ -143,29 +40,37 @@ function timeFromNow(iso: string) {
 
 function Podium({ top3 }: { top3: LeaderboardEntry[] }) {
   const [first, second, third] = top3;
+  
+  // Pokud není dostatek dat, nezobrazovat podium
+  if (!first) {
+    return null;
+  }
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <Card
-        className="order-2 sm:order-1 flex flex-col items-center"
-        padding="lg"
-      >
-        <div className="text-2xl font-bold text-gray-900">#{second.rank}</div>
-        <img
-          src={second.avatarUrl}
-          alt={second.displayName}
-          className="h-16 w-16 rounded-full mt-3"
-        />
-        <div className="mt-2 text-gray-900 font-medium">
-          {second.displayName}
-        </div>
-        <div className="mt-1 text-green-700 font-bold">
-          {formatNumber(second.score)} b
-        </div>
-        <div className="mt-1 text-sm text-gray-600">
-          {second.countryCount} zemí
-        </div>
-        <div className="mt-2 text-xl">{second.badges.join(" ")}</div>
-      </Card>
+      {second && (
+        <Card
+          className="order-2 sm:order-1 flex flex-col items-center"
+          padding="lg"
+        >
+          <div className="text-2xl font-bold text-gray-900">#{second.rank}</div>
+          <img
+            src={second.avatarUrl}
+            alt={second.displayName}
+            className="h-16 w-16 rounded-full mt-3"
+          />
+          <div className="mt-2 text-gray-900 font-medium">
+            {second.displayName}
+          </div>
+          <div className="mt-1 text-green-700 font-bold">
+            {formatNumber(second.score)} b
+          </div>
+          <div className="mt-1 text-sm text-gray-600">
+            {second.countryCount} zemí
+          </div>
+          <div className="mt-2 text-xl">{second.badges.join(" ")}</div>
+        </Card>
+      )}
 
       <Card
         className="order-1 sm:order-2 flex flex-col items-center sm:transform sm:-translate-y-2"
@@ -192,24 +97,26 @@ function Podium({ top3 }: { top3: LeaderboardEntry[] }) {
         <div className="mt-2 text-2xl">{first.badges.join(" ")}</div>
       </Card>
 
-      <Card className="order-3 flex flex-col items-center" padding="lg">
-        <div className="text-2xl font-bold text-gray-900">#{third.rank}</div>
-        <img
-          src={third.avatarUrl}
-          alt={third.displayName}
-          className="h-16 w-16 rounded-full mt-3"
-        />
-        <div className="mt-2 text-gray-900 font-medium">
-          {third.displayName}
-        </div>
-        <div className="mt-1 text-green-700 font-bold">
-          {formatNumber(third.score)} b
-        </div>
-        <div className="mt-1 text-sm text-gray-600">
-          {third.countryCount} zemí
-        </div>
-        <div className="mt-2 text-xl">{third.badges.join(" ")}</div>
-      </Card>
+      {third && (
+        <Card className="order-3 flex flex-col items-center" padding="lg">
+          <div className="text-2xl font-bold text-gray-900">#{third.rank}</div>
+          <img
+            src={third.avatarUrl}
+            alt={third.displayName}
+            className="h-16 w-16 rounded-full mt-3"
+          />
+          <div className="mt-2 text-gray-900 font-medium">
+            {third.displayName}
+          </div>
+          <div className="mt-1 text-green-700 font-bold">
+            {formatNumber(third.score)} b
+          </div>
+          <div className="mt-1 text-sm text-gray-600">
+            {third.countryCount} zemí
+          </div>
+          <div className="mt-2 text-xl">{third.badges.join(" ")}</div>
+        </Card>
+      )}
     </div>
   );
 }
@@ -331,12 +238,31 @@ function TableSkeleton() {
 export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const data = useMemo(() => mockData, []);
+  const [data, setData] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
+    async function fetchLeaderboard() {
+      try {
+        setLoading(true);
+        const res = await fetch("/api/leaderboard?limit=100");
+        const json = await res.json();
+
+        if (!json.ok) {
+          throw new Error(json.error || "Nepodařilo se načíst žebříček");
+        }
+
+        setData(json.data || []);
+        setError(null);
+      } catch (err: any) {
+        console.error("Error fetching leaderboard:", err);
+        setError(err.message || "Chyba při načítání žebříčku");
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchLeaderboard();
   }, []);
 
   const top3 = data.slice(0, 3);
@@ -347,7 +273,7 @@ export default function LeaderboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Žebříček</h1>
-          <p className="text-gray-600 mt-2">Top cestovatelé – maketa UI</p>
+          <p className="text-gray-600 mt-2">Top cestovatelé podle počtu navštívených zemí</p>
         </div>
         <div className="hidden sm:flex items-center gap-2">
           <Button variant="outline" size="sm">
@@ -359,7 +285,11 @@ export default function LeaderboardPage() {
       <ErrorMessage error={error} className="mt-4" />
 
       <section className="mt-6">
-        {loading ? <PodiumSkeleton /> : <Podium top3={top3} />}
+        {loading ? (
+          <PodiumSkeleton />
+        ) : top3.length > 0 ? (
+          <Podium top3={top3} />
+        ) : null}
       </section>
 
       <section className="mt-6">
