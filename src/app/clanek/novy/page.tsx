@@ -89,7 +89,7 @@ export default function NewArticlePage() {
   }
 
   async function onSubmit(
-    e: React.FormEvent,
+    e: React.SyntheticEvent<HTMLFormElement>,
     submitForApproval: boolean = false
   ) {
     e.preventDefault();

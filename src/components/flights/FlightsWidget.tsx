@@ -1,55 +1,151 @@
-// src/components/flights/FlightsWidget.tsx
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/Card";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { ErrorMessage } from "@/components/ui/ErrorMessage";
+import FlightDealCard from "./FlightDealCard";
+import type { FlightDeal } from "@/lib/flights/travelpayouts";
 
 type Props = {
-  query: string; // např. název země nebo regionu
+  origin?: string;
+  limit?: number;
+  showTitle?: boolean;
 };
 
-function buildExternalLinks(query: string) {
-  const q = encodeURIComponent(query);
-  return [
-    {
-      name: "Kiwi.com",
-      href: `https://www.kiwi.com/cz/hledej?to=${q}`,
-    },
-    {
-      name: "Skyscanner",
-      href: `https://www.skyscanner.cz/transport/flights-to/${q}`,
-    },
-    {
-      name: "Google Flights",
-      href: `https://www.google.com/travel/flights?q=${q}`,
-    },
-  ];
-}
+type ApiResponse = {
+  deals: (FlightDeal & { buyLink: string })[];
+  updatedAt: string | null;
+  provider?: "kiwi" | "aviasales";
+  filteredOut?: number;
+};
 
-export default function FlightsWidget({ query }: Props) {
-  const links = buildExternalLinks(query);
+export default function FlightsWidget({
+  origin = "PRG",
+  limit = 12,
+  showTitle = true,
+}: Props) {
+  const [deals, setDeals] = useState<(FlightDeal & { buyLink: string })[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDeals() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const params = new URLSearchParams({
+          origin,
+          limit: limit.toString(),
+          provider: "kiwi",
+          validate: "1",
+        });
+
+        const res = await fetch(`/api/flights/deals?${params.toString()}`);
+        
+        if (!res.ok) {
+          throw new Error("Nepodařilo se načíst letenky");
+        }
+
+        const data: ApiResponse = await res.json();
+
+        if (!cancelled) {
+          setDeals(data.deals || []);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.message || "Chyba při načítání letenek");
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadDeals();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [origin, limit]);
+
+  if (loading) {
+    return (
+      <Card>
+        {showTitle && (
+          <CardHeader>
+            <CardTitle>Letenky z {origin}</CardTitle>
+            <CardDescription>Nejlepší nabídky letenek</CardDescription>
+          </CardHeader>
+        )}
+        <CardContent>
+          <div className="flex justify-center py-8">
+            <LoadingSpinner text="Načítání letenek…" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        {showTitle && (
+          <CardHeader>
+            <CardTitle>Letenky z {origin}</CardTitle>
+            <CardDescription>Nejlepší nabídky letenek</CardDescription>
+          </CardHeader>
+        )}
+        <CardContent>
+          <ErrorMessage error={error} />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (deals.length === 0) {
+    return (
+      <Card>
+        {showTitle && (
+          <CardHeader>
+            <CardTitle>Letenky z {origin}</CardTitle>
+            <CardDescription>Nejlepší nabídky letenek</CardDescription>
+          </CardHeader>
+        )}
+        <CardContent>
+          <p className="text-gray-600 text-center py-8">
+            Momentálně nejsou k dispozici žádné nabídky letenek.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Letenky</CardTitle>
-      </CardHeader>
+      {showTitle && (
+        <CardHeader>
+          <CardTitle>Letenky z {origin}</CardTitle>
+          <CardDescription>Nejlepší nabídky letenek</CardDescription>
+        </CardHeader>
+      )}
       <CardContent>
-        <p className="text-gray-700 mb-3">
-          Rychlé vyhledání letenek pro: <span className="font-semibold">{query}</span>
-        </p>
-        <div className="flex flex-wrap gap-3">
-          {links.map((l) => (
-            <a
-              key={l.name}
-              href={l.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium text-green-700 border-green-300 hover:border-green-600 hover:text-green-900 transition"
-            >
-              {l.name} →
-            </a>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {deals.map((deal, index) => (
+            <FlightDealCard key={`${deal.origin}-${deal.destination}-${deal.departuredate}-${index}`} deal={deal} />
           ))}
         </div>
       </CardContent>
     </Card>
   );
 }
-
-

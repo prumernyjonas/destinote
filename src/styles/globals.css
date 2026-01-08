@@ -91,3 +91,24 @@ body {
     filter: none;
   }
 }
+
+/* Mobile menu slide-in animation */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes slideInRight {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+}

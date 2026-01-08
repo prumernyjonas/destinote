@@ -5,6 +5,7 @@ import Link from "next/link";
 import CountryGuide from "@/components/guides/CountryGuide";
 import FlightsWidget from "@/components/flights/FlightsWidget";
 import ArticlesTeaser from "@/components/articles/ArticlesTeaser";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 // Registrace českého locale (na serveru stačí jednou, chráněno try-catch)
 try {
@@ -42,7 +43,37 @@ function continentLabelFromSlug(slug: string): string {
   if (s === "severni-amerika") return "Severní Amerika";
   if (s === "jizni-amerika") return "Jižní Amerika";
   if (s === "antarktida") return "Antarktida";
+  if (s === "svet") return "Svět";
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Mapování kontinentu z databáze na český název
+function continentFromDbToLabel(continent: string | null | undefined): string {
+  if (!continent) return "Svět";
+  const c = continent.toLowerCase();
+  if (c === "africa" || c === "afrika") return "Afrika";
+  if (c === "europe" || c === "evropa") return "Evropa";
+  if (c === "asia" || c === "asie") return "Asie";
+  if (c === "australia" || c === "oceania" || c === "australie") return "Austrálie & Oceánie";
+  if (c === "north america" || c === "severni-amerika") return "Severní Amerika";
+  if (c === "south america" || c === "jizni-amerika") return "Jižní Amerika";
+  if (c === "antarctica" || c === "antarktida") return "Antarktida";
+  return continent;
+}
+
+async function getContinentFromDatabase(iso2?: string): Promise<string | null> {
+  if (!iso2) return null;
+  try {
+    const admin = createAdminSupabaseClient();
+    const { data } = await admin
+      .from("countries")
+      .select("continent")
+      .eq("iso_code", iso2.toUpperCase())
+      .maybeSingle();
+    return data?.continent || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({
@@ -91,53 +122,67 @@ export default async function CountryDetailPage({
   const displayName =
     resolvedName ||
     country.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()); // fallback kapitalizace
-  const continentLabel = continentLabelFromSlug(continent);
+  
+  // Zkusit získat kontinent z databáze podle ISO2, pokud to selže, použít URL parametr
+  const dbContinent = await getContinentFromDatabase(resolvedIso2);
+  const continentLabel = dbContinent
+    ? continentFromDbToLabel(dbContinent)
+    : continentLabelFromSlug(continent);
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <nav className="text-sm text-gray-600 mb-4">
-        <Link href="/zeme" className="hover:text-green-600 font-medium">
+      {/* Breadcrumb navigace */}
+      <nav className="text-sm text-gray-600 mb-6">
+        <Link href="/zeme" className="hover:text-green-600 font-medium transition-colors">
           Země
         </Link>
         <span className="mx-2">/</span>
         <Link
           href={`/zeme/${continent}`}
-          className="hover:text-green-600 font-medium"
+          className="hover:text-green-600 font-medium transition-colors"
         >
           {continentLabel}
         </Link>
         <span className="mx-2">/</span>
         <span className="text-gray-900 font-semibold">{displayName}</span>
       </nav>
-      <div className="flex items-center gap-3">
-        {resolvedIso2 ? (
-          <span
-            className={`fi fi-${resolvedIso2.toLowerCase()}`}
-            style={{ fontSize: 28 }}
-          />
-        ) : null}
-        <h1 className="text-3xl font-bold text-gray-900">{displayName}</h1>
+
+      {/* Header s vlajkou a názvem */}
+      <div className="mb-8">
+        <div className="flex items-center gap-4 mb-3">
+          {resolvedIso2 ? (
+            <span
+              className={`fi fi-${resolvedIso2.toLowerCase()}`}
+              style={{ fontSize: 56 }}
+            />
+          ) : null}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{displayName}</h1>
+            <p className="text-gray-600 mt-1">
+              Region: <span className="font-medium">{continentLabel}</span>
+            </p>
+          </div>
+        </div>
       </div>
 
-      <p className="text-gray-600 mt-2">
-        Region: <span className="font-medium">{continentLabel}</span>
-      </p>
-
-      <div className="mt-8">
+      {/* Hlavní obsah - mapa a průvodce */}
+      <div className="mb-8">
         <CountryGuide
           name={displayName}
           iso2={resolvedIso2}
           continent={continentLabel}
         />
       </div>
-      {/* <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      {/* Další sekce - články a letenky */}
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <ArticlesTeaser title="Cestopisy a články" href="/community" />
         </div>
         <div>
           <FlightsWidget query={displayName} />
         </div>
-      </div> */}
+      </div>
     </main>
   );
 }

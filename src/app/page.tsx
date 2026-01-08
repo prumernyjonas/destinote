@@ -672,30 +672,17 @@ export default function Home() {
             </Card>
 
             {/* Flights */}
-            <Card className="border border-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
-              <CardHeader className="bg-emerald-600 text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2">
-                  <FiSend />
-                  Letenky
-                </CardTitle>
-                <CardDescription className="text-blue-100">
-                  Rychlé vyhledávání
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3">
-                {["Bangkok", "Lisabon", "New York"].map((q) => (
-                  <FlightsWidget key={q} query={q} />
-                ))}
-                <Link href="/flights">
-                  <Button
-                    variant="outline"
-                    className="w-full border border-gray-300 hover:border-blue-500 hover:text-blue-600 font-semibold"
-                  >
-                    Více destinací
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <FlightsWidget origin="PRG" limit={6} showTitle={true} />
+              <Link href="/flights">
+                <Button
+                  variant="outline"
+                  className="w-full border border-gray-300 hover:border-emerald-500 hover:text-emerald-600 font-semibold"
+                >
+                  Více destinací
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
