@@ -4,9 +4,10 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export async function POST(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const commentId = params.id;
+  const { id } = await params;
+  const commentId = id;
   const supa = await createServerSupabaseClient();
   const { data: auth } = await supa.auth.getUser();
   if (!auth.user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });

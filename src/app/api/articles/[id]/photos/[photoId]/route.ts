@@ -5,9 +5,9 @@ import { getUserRole, isAdmin } from "@/app/api/_utils/auth";
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string; photoId: string } }
+  { params }: { params: Promise<{ id: string; photoId: string }> }
 ) {
-  const { id: articleId, photoId } = params;
+  const { id: articleId, photoId } = await params;
   const supa = await createServerSupabaseClient();
   const { data: auth } = await supa.auth.getUser();
   if (!auth.user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });

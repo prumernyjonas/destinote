@@ -5,9 +5,9 @@ import { getUserRole, isAdmin } from "@/app/api/_utils/auth";
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   const supa = await createServerSupabaseClient();
   const { data: auth } = await supa.auth.getUser();
   if (!auth.user) {

@@ -11,6 +11,18 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* Travel Blue Color Palette */
+  --color-travel-50: #B9D6F2;
+  --color-travel-100: #B9D6F2;
+  --color-travel-200: #607899;
+  --color-travel-300: #006DAA;
+  --color-travel-400: #0260A7;
+  --color-travel-500: #0353A4;
+  --color-travel-600: #053772;
+  --color-travel-700: #003559;
+  --color-travel-800: #061A40;
+  --color-travel-900: #061A40;
 }
 
 @media (prefers-color-scheme: dark) {

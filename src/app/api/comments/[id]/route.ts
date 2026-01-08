@@ -30,9 +30,10 @@ async function resolveUserId(req: NextRequest): Promise<string | null> {
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const commentId = params.id;
+  const { id } = await params;
+  const commentId = id;
   const userId = await resolveUserId(_req);
   if (!userId)
     return new Response(JSON.stringify({ error: "Unauthorized" }), {

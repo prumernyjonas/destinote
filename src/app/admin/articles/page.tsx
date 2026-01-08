@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { supabase } from "@/lib/supabase/client";
 
 type AdminArticle = {
   id: string;
@@ -19,35 +20,20 @@ export default function AdminArticlesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function getUserId(): string | null {
-    try {
-      const keys = Object.keys(localStorage);
-      for (const key of keys) {
-        if (key.includes("supabase") || key.includes("auth")) {
-          try {
-            const value = localStorage.getItem(key);
-            if (value) {
-              const parsed = JSON.parse(value);
-              if (parsed?.user?.id) {
-                return parsed.user.id;
-              }
-            }
-          } catch {}
-        }
-      }
-    } catch {}
-    return null;
-  }
-
   async function loadAll() {
     setLoading(true);
     setError(null);
     try {
-      const userId = getUserId();
-      const userIdParam = userId ? `&userId=${encodeURIComponent(userId)}` : "";
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      const headers: Record<string, string> = {};
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
       const [resPending, resApproved] = await Promise.all([
-        fetch(`/api/admin/articles?status=pending${userIdParam}`),
-        fetch(`/api/admin/articles?status=approved${userIdParam}`),
+        fetch(`/api/admin/articles?status=pending`, { headers }),
+        fetch(`/api/admin/articles?status=approved`, { headers }),
       ]);
       if (!resPending.ok) {
         const d = await resPending.json().catch(() => ({}));
@@ -75,25 +61,59 @@ export default function AdminArticlesPage() {
   }, []);
 
   async function approve(id: string) {
-    const userId = getUserId();
-    const url = userId
-      ? `/api/admin/articles/${id}/approve?userId=${encodeURIComponent(userId)}`
-      : `/api/admin/articles/${id}/approve`;
-    await fetch(url, { method: "POST" });
-    loadAll();
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      const headers: Record<string, string> = {
+        "content-type": "application/json",
+      };
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      const res = await fetch(`/api/admin/articles/${id}/approve`, {
+        method: "POST",
+        headers,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Chyba při schvalování článku");
+      }
+
+      await loadAll();
+    } catch (e: any) {
+      setError(e.message || "Chyba při schvalování");
+    }
   }
+
   async function reject(id: string) {
-    const reason = prompt("Důvod zamítnutí (volitelné):") || "";
-    const userId = getUserId();
-    const url = userId
-      ? `/api/admin/articles/${id}/reject?userId=${encodeURIComponent(userId)}`
-      : `/api/admin/articles/${id}/reject`;
-    await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ reason }),
-    });
-    loadAll();
+    try {
+      const reason = prompt("Důvod zamítnutí (volitelné):") || "";
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      const headers: Record<string, string> = {
+        "content-type": "application/json",
+      };
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      const res = await fetch(`/api/admin/articles/${id}/reject`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ reason }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Chyba při zamítání článku");
+      }
+
+      await loadAll();
+    } catch (e: any) {
+      setError(e.message || "Chyba při zamítání");
+    }
   }
 
   return (

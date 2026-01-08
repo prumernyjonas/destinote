@@ -4,8 +4,9 @@ import { getUserRole, isAdmin, getUserIdFromRequest } from "@/app/api/_utils/aut
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const userId = await getUserIdFromRequest(req);
   if (!userId) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -23,7 +24,7 @@ export async function DELETE(
   const { error } = await admin
     .from("comments")
     .update({ deleted_at: new Date().toISOString() })
-    .eq("id", params.id);
+    .eq("id", id);
   if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,

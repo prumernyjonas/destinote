@@ -43,6 +43,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const [mobileCountriesOpen, setMobileCountriesOpen] = useState(false);
+  const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -643,9 +644,12 @@ export default function Navbar() {
 
             {/* User Section */}
             {mounted && user && (
-              <div className="border-t border-blue-200 px-6 pt-5 pb-12 bg-white/30">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-full overflow-hidden bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200">
+              <div className="border-t border-blue-200 bg-white/30">
+                <button
+                  onClick={() => setMobileUserMenuOpen(!mobileUserMenuOpen)}
+                  className="w-full px-6 py-5 flex items-center gap-3 hover:bg-white/40 transition"
+                >
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200 flex-shrink-0">
                     {user.photoURL ? (
                       <Image
                         src={user.photoURL}
@@ -658,7 +662,7 @@ export default function Navbar() {
                       getInitial(user)
                     )}
                   </div>
-                  <div className="flex flex-col flex-1 min-w-0">
+                  <div className="flex flex-col flex-1 min-w-0 text-left">
                     <span className="text-base font-semibold text-blue-900 truncate">
                       {user.displayName || user.email || "Uživatel"}
                     </span>
@@ -666,58 +670,71 @@ export default function Navbar() {
                       {user.email || "Člen Destinote"}
                     </span>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      router.push(`/profil/${user?.nicknameSlug || user?.uid}`);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
-                  >
-                    <FiUser className="text-lg" />
-                    <span>Můj profil</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      router.push("/napoveda");
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
-                  >
-                    <FiHelpCircle className="text-lg" />
-                    <span>Nápověda</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      router.push("/nastaveni");
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
-                  >
-                    <FiSettings className="text-lg" />
-                    <span>Nastavení</span>
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (loggingOut) return;
-                      setLoggingOut(true);
-                      try {
-                        await logout();
+                  <FiChevronDown
+                    className={`w-5 h-5 text-blue-900 transition-transform flex-shrink-0 ${
+                      mobileUserMenuOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {mobileUserMenuOpen && (
+                  <div className="px-6 pb-5 space-y-2 border-t border-blue-200 pt-3">
+                    <button
+                      onClick={() => {
                         setMobileMenuOpen(false);
-                      } finally {
-                        setLoggingOut(false);
-                        router.replace("/auth/login");
-                        router.refresh();
-                      }
-                    }}
-                    disabled={loggingOut}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-red-600 hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed transition"
-                  >
-                    <FiLogOut className="text-lg" />
-                    <span>{loggingOut ? "Odhlašuji…" : "Odhlásit se"}</span>
-                  </button>
-                </div>
+                        setMobileUserMenuOpen(false);
+                        router.push(
+                          `/profil/${user?.nicknameSlug || user?.uid}`
+                        );
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
+                    >
+                      <FiUser className="text-lg" />
+                      <span>Můj profil</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setMobileUserMenuOpen(false);
+                        router.push("/napoveda");
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
+                    >
+                      <FiHelpCircle className="text-lg" />
+                      <span>Nápověda</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setMobileUserMenuOpen(false);
+                        router.push("/nastaveni");
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
+                    >
+                      <FiSettings className="text-lg" />
+                      <span>Nastavení</span>
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (loggingOut) return;
+                        setLoggingOut(true);
+                        try {
+                          await logout();
+                          setMobileMenuOpen(false);
+                          setMobileUserMenuOpen(false);
+                        } finally {
+                          setLoggingOut(false);
+                          router.replace("/auth/login");
+                          router.refresh();
+                        }
+                      }}
+                      disabled={loggingOut}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-red-600 hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                    >
+                      <FiLogOut className="text-lg" />
+                      <span>{loggingOut ? "Odhlašuji…" : "Odhlásit se"}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

@@ -27,9 +27,10 @@ async function resolveUserId(req: NextRequest): Promise<string | null> {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const articleId = params.id;
+  const { id } = await params;
+  const articleId = id;
   const admin = createAdminSupabaseClient();
   // Načíst všechny komentáře pro článek a seskupit na klientovi
   const { data, error } = await admin
@@ -117,9 +118,10 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const articleId = params.id;
+  const { id } = await params;
+  const articleId = id;
   const userId = await resolveUserId(req);
   if (!userId)
     return new Response(JSON.stringify({ error: "Unauthorized" }), {

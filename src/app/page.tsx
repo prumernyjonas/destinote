@@ -31,6 +31,7 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import GradientText from "@/components/ui/GradientText";
 
 type Article = {
   id: string;
@@ -42,42 +43,71 @@ type Article = {
   created_at: string;
 };
 
+// Pomocná funkce pro vytvoření slugu ze jména země
+function countrySlug(name: string): string {
+  return name
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 const continents = [
   {
-    name: "Evropa",
-    slug: "evropa",
-    color: "bg-emerald-500",
-    items: ["Itálie", "Rakousko", "Švýcarsko", "Chorvatsko", "Polsko"],
+    name: "Afrika",
+    slug: "afrika",
+    items: [
+      { name: "Maroko", continentSlug: "afrika" },
+      { name: "Tanzánie", continentSlug: "afrika" },
+      { name: "Keňa", continentSlug: "afrika" },
+      { name: "Madagaskar", continentSlug: "afrika" },
+      { name: "Libye", continentSlug: "afrika" },
+    ],
+  },
+  {
+    name: "Amerika",
+    slug: "severni-amerika", // Použijeme severni-amerika jako základ, nebo můžeme vytvořit obecný slug
+    items: [
+      { name: "USA", continentSlug: "severni-amerika" },
+      { name: "Kuba", continentSlug: "severni-amerika" },
+      { name: "Peru", continentSlug: "jizni-amerika" },
+      { name: "Kanada", continentSlug: "severni-amerika" },
+      { name: "Brazílie", continentSlug: "jizni-amerika" },
+    ],
   },
   {
     name: "Asie",
     slug: "asie",
-    color: "bg-emerald-600",
-    items: ["Thajsko", "Vietnam", "Indie", "Srí Lanka", "Indonésie"],
+    items: [
+      { name: "Thajsko", continentSlug: "asie" },
+      { name: "Indie", continentSlug: "asie" },
+      { name: "Srí Lanka", continentSlug: "asie" },
+      { name: "Vietnam", continentSlug: "asie" },
+      { name: "Indonésie", continentSlug: "asie" },
+    ],
   },
   {
-    name: "Severní Amerika",
-    slug: "severni-amerika",
-    color: "bg-emerald-500",
-    items: ["USA", "Kanada", "Mexiko", "Kuba", "Kostarika"],
-  },
-  {
-    name: "Jižní Amerika",
-    slug: "jizni-amerika",
-    color: "bg-emerald-400",
-    items: ["Brazílie", "Argentina", "Peru", "Chile", "Kolumbie"],
-  },
-  {
-    name: "Afrika",
-    slug: "afrika",
-    color: "bg-emerald-600",
-    items: ["Maroko", "Keňa", "Tanzánie", "Uganda", "Madagaskar"],
-  },
-  {
-    name: "Austrálie a Oceánie",
+    name: "Austrálie",
     slug: "australie",
-    color: "bg-emerald-500",
-    items: ["Austrálie", "Nový Zéland", "Tuvalu", "Fidži", "Tahiti"],
+    items: [
+      { name: "Austrálie", continentSlug: "australie" },
+      { name: "Nový Zéland", continentSlug: "australie" },
+      { name: "Papua Nová Guinea", continentSlug: "australie" },
+      { name: "Francouzská Polynésie", continentSlug: "australie" },
+      { name: "Tuvalu", continentSlug: "australie" },
+    ],
+  },
+  {
+    name: "Evropa",
+    slug: "evropa",
+    items: [
+      { name: "Polsko", continentSlug: "evropa" },
+      { name: "Švýcarsko", continentSlug: "evropa" },
+      { name: "Rakousko", continentSlug: "evropa" },
+      { name: "Itálie", continentSlug: "evropa" },
+      { name: "Chorvatsko", continentSlug: "evropa" },
+    ],
   },
 ];
 
@@ -128,11 +158,11 @@ const leaderboardPreview = [
 
 function avatarColor(seed: string) {
   const palette = [
-    "bg-emerald-500",
-    "bg-emerald-600",
-    "bg-emerald-400",
-    "bg-emerald-700",
-    "bg-emerald-500",
+    "bg-travel-500",
+    "bg-travel-600",
+    "bg-travel-400",
+    "bg-travel-700",
+    "bg-travel-500",
   ];
   const idx = seed.charCodeAt(0) % palette.length;
   return palette[idx];
@@ -169,7 +199,7 @@ export default function Home() {
     <div className="min-h-screen bg-slate-50">
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-emerald-50/50 blur-3xl" />
+        <div className="absolute inset-0 bg-travel-50/50 blur-3xl" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16">
           <div className="grid lg:grid-cols-2 gap-8 items-center">
             {/* Left side - Text content */}
@@ -183,7 +213,7 @@ export default function Home() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2, duration: 0.4 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-emerald-200 shadow-lg"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-travel-200 shadow-lg"
               >
                 <span className="text-lg">🌍</span>
                 <span className="text-sm font-semibold text-gray-700">
@@ -196,8 +226,13 @@ export default function Home() {
                 transition={{ delay: 0.3, duration: 0.6 }}
                 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight"
               >
-                <span className="bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent">
-                  Objevuj místa. Ukládej zážitky
+                <span>
+                  <GradientText
+                    colors={["#006daa", "#0353a4", "#053772"]}
+                    animationSpeed={7}
+                  >
+                    Objevuj místa. Ukládej zážitky
+                  </GradientText>
                 </span>
               </motion.h1>
               <motion.p
@@ -220,7 +255,7 @@ export default function Home() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all">
+                    <Button className="bg-travel-600 hover:bg-travel-700 active:bg-travel-700 focus:ring-0 focus:outline-none text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all cursor-pointer">
                       Prozkoumat mapu
                     </Button>
                   </motion.div>
@@ -230,10 +265,7 @@ export default function Home() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Button
-                      variant="outline"
-                      className="px-8 py-4 text-lg font-semibold border border-gray-300 hover:border-emerald-500 hover:text-emerald-600 transition-all"
-                    >
+                    <Button className="px-8 py-4 text-lg font-semibold border-2 border-blue-900 bg-white hover:bg-blue-50 active:bg-blue-50 focus:ring-0 focus:outline-none text-blue-900 hover:text-blue-900 active:text-blue-900 shadow-md hover:shadow-lg transition-all cursor-pointer">
                       Začít zdarma
                     </Button>
                   </motion.div>
@@ -242,15 +274,15 @@ export default function Home() {
               {/* Trust row */}
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-sm text-gray-600">
                 <div className="flex items-center gap-2">
-                  <FiCreditCard className="w-4 h-4 text-emerald-600" />
+                  <FiCreditCard className="w-4 h-4 text-travel-600" />
                   <span>Bez platební karty</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <FiClock className="w-4 h-4 text-emerald-600" />
+                  <FiClock className="w-4 h-4 text-travel-600" />
                   <span>Rychlá registrace</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <FiUser className="w-4 h-4 text-emerald-600" />
+                  <FiUser className="w-4 h-4 text-travel-600" />
                   <span>Vytvoř si profil</span>
                 </div>
               </div>
@@ -288,7 +320,7 @@ export default function Home() {
                     className="bg-white rounded-2xl p-3 border border-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
                   >
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white text-sm">
+                      <div className="w-8 h-8 rounded-lg bg-travel-500 flex items-center justify-center text-white text-sm">
                         <item.icon />
                       </div>
                       <div>
@@ -320,7 +352,7 @@ export default function Home() {
                   style={{ imageRendering: "crisp-edges" }}
                 />
                 {/* Glow effect */}
-                <div className="absolute inset-0 bg-emerald-400/20 blur-3xl -z-10 rounded-full scale-75" />
+                <div className="absolute inset-0 bg-travel-400/20 blur-3xl -z-10 rounded-full scale-75" />
               </div>
             </motion.div>
           </div>
@@ -382,7 +414,7 @@ export default function Home() {
             >
               <motion.div
                 whileHover={{ scale: 1.1, rotate: 5 }}
-                className="w-14 h-14 rounded-xl bg-emerald-500 flex items-center justify-center text-white mb-4 shadow-lg"
+                className="w-14 h-14 rounded-xl bg-travel-500 flex items-center justify-center text-white mb-4 shadow-lg"
               >
                 <item.icon className="w-7 h-7" />
               </motion.div>
@@ -413,7 +445,7 @@ export default function Home() {
           transition={{ duration: 0.6 }}
           className="bg-white rounded-2xl border border-gray-200/70 shadow-sm overflow-hidden"
         >
-          <div className="bg-emerald-600 px-6 sm:px-8 py-5">
+          <div className="bg-travel-600 px-6 sm:px-8 py-5">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
@@ -428,18 +460,18 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <div className="h-[380px] sm:h-[420px] lg:h-[500px] bg-emerald-50">
+          <div className="h-[380px] sm:h-[420px] lg:h-[500px] bg-travel-50">
             <PublicWorldMap />
           </div>
           <div className="px-6 sm:px-8 py-5 bg-gray-50 border-t border-gray-200">
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <div className="flex items-center gap-2 font-semibold text-gray-700">
-                <FiFlag className="text-emerald-600" />
+                <FiFlag className="text-travel-600" />
                 <span>195 zemí k objevení</span>
               </div>
               <Link
                 href="/zeme"
-                className="ml-auto inline-flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700 transition-colors"
+                className="ml-auto inline-flex items-center gap-2 text-travel-600 font-semibold hover:text-travel-700 transition-colors"
               >
                 Otevřít všechny země <FiArrowRight />
               </Link>
@@ -470,7 +502,7 @@ export default function Home() {
             Každý kontinent má svůj příběh. Začněte tam, kde vás to láká.
           </p>
         </motion.div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex flex-wrap justify-center gap-6">
           {continents.map((continent, index) => (
             <motion.div
               key={continent.slug}
@@ -478,43 +510,49 @@ export default function Home() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1, duration: 0.5 }}
+              whileHover={{ y: -5 }}
+              className="flex-1 min-w-[200px] max-w-[240px]"
             >
-              <Link href={`/zeme/${continent.slug}`} className="group block">
-                <motion.div
-                  whileHover={{ y: -5 }}
-                  className="relative h-full bg-white rounded-2xl border border-gray-200/70 shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden"
-                >
-                  <div
-                    className={`h-32 ${continent.color} relative overflow-hidden`}
-                  >
-                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
-                    <div className="absolute bottom-4 left-6">
-                      <h3 className="text-2xl font-bold text-white drop-shadow-lg">
-                        {continent.name}
-                      </h3>
-                    </div>
+              <div className="bg-white rounded-2xl border border-gray-200/70 shadow-sm hover:shadow-lg transition-all duration-200 h-full flex flex-col overflow-hidden">
+                {/* Header s názvem kontinentu a ikonou */}
+                <div className="px-5 py-4 border-b border-gray-200/70">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-bold text-travel-600 border border-travel-300 rounded-lg px-3 py-1.5 inline-block">
+                      {continent.name}
+                    </h3>
+                    <FiMap className="w-6 h-6 text-travel-600 flex-shrink-0" />
                   </div>
-                  <div className="p-6">
-                    <ul className="space-y-2">
-                      {continent.items.map((item) => (
-                        <li
-                          key={item}
-                          className="flex items-center gap-2 text-gray-700 group-hover:text-emerald-600 transition-colors"
+                </div>
+
+                {/* Seznam zemí */}
+                <div className="flex-1 px-5 py-5">
+                  <ul className="space-y-2.5">
+                    {continent.items.map((country) => (
+                      <li key={country.name}>
+                        <Link
+                          href={`/zeme/${country.continentSlug}/${countrySlug(
+                            country.name
+                          )}`}
+                          className="block text-gray-700 hover:text-travel-600 transition-colors cursor-pointer"
                         >
-                          <FiFlag className="text-emerald-500" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-between">
-                      <span className="text-sm font-semibold text-emerald-600 group-hover:text-emerald-700">
-                        Zobrazit všechny země
-                      </span>
-                      <FiArrowRight className="text-emerald-600 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </div>
-                </motion.div>
-              </Link>
+                          {country.name}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Tlačítko "Další země" */}
+                <div className="px-5 py-4 border-t border-gray-200/70 mt-auto">
+                  <Link
+                    href={`/zeme/${continent.slug}`}
+                    className="flex items-center justify-between text-travel-600 hover:text-travel-700 font-semibold text-sm border border-travel-300 rounded-lg px-3 py-2 bg-white hover:bg-travel-50 transition-all group"
+                  >
+                    <span>DALŠÍ ZEMĚ</span>
+                    <FiArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </div>
+              </div>
             </motion.div>
           ))}
         </div>
@@ -522,106 +560,107 @@ export default function Home() {
 
       {/* Features & Community */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Community Articles */}
-          <div className="lg:col-span-2 space-y-6">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                Nejnovější z komunity
-              </h2>
-              <p className="text-gray-600">
-                Inspirujte se cestopisy od ostatních cestovatelů
-              </p>
-            </div>
-            <div className="grid md:grid-cols-2 gap-6">
-              {loadingArticles &&
-                [...Array(2)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-2xl border border-gray-200/70 shadow-sm overflow-hidden"
-                  >
-                    <div className="h-48 bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse" />
-                    <div className="p-5 space-y-3">
-                      <div className="h-4 w-24 bg-gray-200 animate-pulse rounded" />
-                      <div className="h-6 w-3/4 bg-gray-200 animate-pulse rounded" />
+        {/* Community Articles */}
+        <div className="space-y-6 text-center">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Nejnovější z komunity
+            </h2>
+            <p className="text-gray-600">
+              Inspirujte se cestopisy od ostatních cestovatelů
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {loadingArticles &&
+              [...Array(3)].map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl border border-gray-200/70 shadow-sm overflow-hidden"
+                >
+                  <div className="h-48 bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse" />
+                  <div className="p-5 space-y-3">
+                    <div className="h-4 w-24 bg-gray-200 animate-pulse rounded" />
+                    <div className="h-6 w-3/4 bg-gray-200 animate-pulse rounded" />
+                  </div>
+                </div>
+              ))}
+            {!loadingArticles && articlePreview.length === 0 && (
+              <div className="col-span-full bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center">
+                <FiBookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Zatím žádné články
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Buďte první a podělte se o svůj příběh z cest
+                </p>
+                <Link href="/clanek/novy">
+                  <Button className="bg-travel-600 hover:bg-travel-700 text-white">
+                    Přidat článek
+                  </Button>
+                </Link>
+              </div>
+            )}
+            {!loadingArticles &&
+              articlePreview.map((article) => (
+                <Link
+                  key={article.id}
+                  href={`/clanek/${article.slug}`}
+                  className="group block"
+                >
+                  <div className="bg-white rounded-2xl border border-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden h-full">
+                    <div className="relative h-48 bg-travel-50 overflow-hidden">
+                      {article.main_image_url ? (
+                        <img
+                          src={article.main_image_url}
+                          alt={article.main_image_alt || article.title}
+                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <FiCamera className="w-12 h-12 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-travel-600 flex items-center gap-1">
+                        <FiUsers />
+                        Komunita
+                      </div>
+                    </div>
+                    <div className="p-5">
+                      <div className="text-xs text-gray-500 mb-2">
+                        {article.published_at
+                          ? new Date(article.published_at).toLocaleDateString(
+                              "cs-CZ"
+                            )
+                          : new Date(article.created_at).toLocaleDateString(
+                              "cs-CZ"
+                            )}
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-900 line-clamp-2 group-hover:text-travel-600 transition-colors">
+                        {article.title}
+                      </h3>
                     </div>
                   </div>
-                ))}
-              {!loadingArticles && articlePreview.length === 0 && (
-                <div className="col-span-2 bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center">
-                  <FiBookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    Zatím žádné články
-                  </h3>
-                  <p className="text-gray-600 mb-6">
-                    Buďte první a podělte se o svůj příběh z cest
-                  </p>
-                  <Link href="/clanek/novy">
-                    <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                      Přidat článek
-                    </Button>
-                  </Link>
-                </div>
-              )}
-              {!loadingArticles &&
-                articlePreview.map((article) => (
-                  <Link
-                    key={article.id}
-                    href={`/clanek/${article.slug}`}
-                    className="group block"
-                  >
-                    <div className="bg-white rounded-2xl border border-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden h-full">
-                      <div className="relative h-48 bg-emerald-50 overflow-hidden">
-                        {article.main_image_url ? (
-                          <img
-                            src={article.main_image_url}
-                            alt={article.main_image_alt || article.title}
-                            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <FiCamera className="w-12 h-12 text-gray-400" />
-                          </div>
-                        )}
-                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-emerald-600 flex items-center gap-1">
-                          <FiUsers />
-                          Komunita
-                        </div>
-                      </div>
-                      <div className="p-5">
-                        <div className="text-xs text-gray-500 mb-2">
-                          {article.published_at
-                            ? new Date(article.published_at).toLocaleDateString(
-                                "cs-CZ"
-                              )
-                            : new Date(article.created_at).toLocaleDateString(
-                                "cs-CZ"
-                              )}
-                        </div>
-                        <h3 className="text-lg font-bold text-gray-900 line-clamp-2 group-hover:text-emerald-600 transition-colors">
-                          {article.title}
-                        </h3>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-            </div>
-            <Link href="/community">
-              <Button
-                variant="outline"
-                className="w-full border border-gray-300 hover:border-emerald-500 hover:text-emerald-600 font-semibold"
-              >
-                Zobrazit všechny články
-              </Button>
-            </Link>
+                </Link>
+              ))}
           </div>
+          <Link href="/community">
+            <Button
+              variant="outline"
+              className="border border-blue-900 hover:border-blue-900 hover:bg-blue-50 focus:border-blue-900 focus:ring-blue-900 text-blue-900 hover:text-blue-900 focus:text-blue-900 font-semibold cursor-pointer"
+            >
+              Zobrazit všechny články
+            </Button>
+          </Link>
+        </div>
+      </section>
 
-          {/* 
+      {/* 
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="space-y-6"> */}
-          {/* Leaderboard */}
-          {/* <Card className="border border-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
-              <CardHeader className="bg-emerald-600 text-white rounded-t-lg">
+      {/* Leaderboard */}
+      {/* <Card className="border border-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+              <CardHeader className="bg-travel-600 text-white rounded-t-lg">
                 <CardTitle className="flex items-center gap-2">
                   <FiAward />
                   Žebříček
@@ -634,7 +673,7 @@ export default function Home() {
                 {leaderboardPreview.map((user, idx) => (
                   <div
                     key={user.name}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-200 hover:border-emerald-300 transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-200 hover:border-travel-300 transition-colors"
                   >
                     <div
                       className={`w-12 h-12 rounded-xl ${avatarColor(
@@ -663,7 +702,7 @@ export default function Home() {
                 <Link href="/leaderboard">
                   <Button
                     variant="outline"
-                    className="w-full border border-gray-300 hover:border-emerald-500 hover:text-emerald-600 font-semibold"
+                    className="w-full border border-gray-300 hover:border-travel-500 hover:text-travel-600 font-semibold"
                   >
                     Celý žebříček
                   </Button>
@@ -671,21 +710,20 @@ export default function Home() {
               </CardContent>
             </Card> */}
 
-          {/* Flights */}
-          {/* <div className="space-y-4">
+      {/* Flights */}
+      {/* <div className="space-y-4">
               <FlightsWidget origin="PRG" limit={6} showTitle={true} />
               <Link href="/flights">
                 <Button
                   variant="outline"
-                  className="w-full border border-gray-300 hover:border-emerald-500 hover:text-emerald-600 font-semibold"
+                  className="w-full border border-gray-300 hover:border-travel-500 hover:text-travel-600 font-semibold"
                 >
                   Více destinací
                 </Button>
               </Link>
             </div> */}
-          {/* </div> */}
-        </div>
-      </section>
+      {/* </div> */}
+      {/* </section> */}
 
       {/* Features Grid */}
       <motion.section
@@ -722,7 +760,7 @@ export default function Home() {
             >
               <motion.div
                 whileHover={{ scale: 1.1, rotate: 5 }}
-                className="w-14 h-14 rounded-xl bg-emerald-500 flex items-center justify-center text-white mb-4 shadow-lg transition-transform"
+                className="w-14 h-14 rounded-xl bg-travel-500 flex items-center justify-center text-white mb-4 shadow-lg transition-transform"
               >
                 <feature.icon className="w-7 h-7" />
               </motion.div>
@@ -748,7 +786,7 @@ export default function Home() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative overflow-hidden bg-emerald-600 rounded-2xl shadow-lg"
+          className="relative overflow-hidden bg-travel-600 rounded-2xl shadow-lg"
         >
           <div className="absolute inset-0 opacity-20">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.1)_1px,transparent_0)] [background-size:20px_20px]" />
@@ -763,7 +801,7 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/auth/register">
-                <Button className="bg-white text-emerald-600 hover:bg-gray-100 px-8 py-4 text-lg font-bold shadow-xl">
+                <Button className="bg-white text-travel-600 hover:bg-gray-100 px-8 py-4 text-lg font-bold shadow-xl">
                   Zaregistrovat se zdarma
                 </Button>
               </Link>
