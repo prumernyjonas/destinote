@@ -52,6 +52,10 @@ export default function LoginPage() {
       setLocalError(err);
       toast.error(err);
     }
+    const message = searchParams?.get("message");
+    if (message === "email-confirmation") {
+      toast.success("Zkontrolujte svůj email a potvrďte registraci kliknutím na odkaz v emailu.");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 

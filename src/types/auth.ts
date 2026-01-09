@@ -22,7 +22,7 @@ export interface LoginCredentials {
 }
 
 export interface RegisterCredentials {
-  name: string;
+  nickname: string;
   email: string;
   password: string;
   confirmPassword: string;

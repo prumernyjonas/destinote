@@ -48,17 +48,19 @@ function mapSupabaseUserToAppUser(
   dbNickname?: string
 ): User {
   const meta = (sbUser.user_metadata as any) || {};
+  // Nickname z DB má přednost, pak z metadata
+  const nickname = dbNickname || meta.nickname || undefined;
+  // Slugifikovaná verze pro URL
+  const nicknameSlug = nickname ? slugifyNickname(nickname) : undefined;
+  // DisplayName použije nickname, pokud je dostupný, jinak fallback
   const displayName =
+    nickname ||
     meta.displayName ||
     meta.full_name ||
     meta.name ||
     meta.user_name ||
     (sbUser.email ? sbUser.email.split("@")[0] : "");
   const photoURL = meta.avatar_url || meta.picture || "";
-  // Nickname z DB má přednost, pak z metadata
-  const nickname = dbNickname || meta.nickname || undefined;
-  // Slugifikovaná verze pro URL
-  const nicknameSlug = nickname ? slugifyNickname(nickname) : undefined;
 
   return {
     uid: sbUser.id,
@@ -139,17 +141,24 @@ export const authUtils = {
       throw new Error("Hesla se neshodují");
     }
 
+    // Získat správnou URL pro redirect
+    let redirectUrl: string | undefined;
+    if (typeof window !== "undefined") {
+      // V browseru použijeme aktuální origin
+      redirectUrl = `${window.location.origin}/auth/callback`;
+    } else if (process.env.NEXT_PUBLIC_SITE_URL) {
+      // Pokud je nastavena environment variable, použijeme ji
+      redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email: credentials.email,
       password: credentials.password,
       options: {
         data: {
-          displayName: credentials.name,
+          nickname: credentials.nickname,
         },
-        emailRedirectTo:
-          typeof window !== "undefined"
-            ? `${window.location.origin}/auth/login`
-            : undefined,
+        emailRedirectTo: redirectUrl,
       },
     });
 
@@ -157,15 +166,43 @@ export const authUtils = {
       throw new Error(error.message);
     }
 
-    // U Sugabase může být potřeba potvrdit email; data.user může být null do potvrzení
+    // Pokud je email confirmation povoleno, data.user může být null
+    // Záznam v users tabulce se vytvoří až po potvrzení emailu v callback route
     if (!data.user) {
-      throw new Error("Registrace proběhla – ověřte email a přihlaste se");
+      // Registrace proběhla, ale email musí být potvrzen
+      throw new Error(
+        "Registrace proběhla úspěšně! Zkontrolujte svůj email a potvrďte registraci kliknutím na odkaz v emailu."
+      );
     }
 
-    const user = mapSupabaseUserToAppUser(data.user);
-    // Uložení do cache (uživatel může vyžadovat ověření emailu)
-    this.setCachedUser(user);
-    return user;
+    // Pokud je uživatel hned potvrzený (např. v developmentu), vytvoříme záznam
+    if (data.user.email_confirmed_at) {
+      try {
+        const { error: dbError } = await supabase.from("users").insert({
+          id: data.user.id,
+          nickname: credentials.nickname,
+          role: "user",
+        });
+
+        if (dbError) {
+          console.error("Chyba při vytváření záznamu uživatele:", dbError);
+        }
+      } catch (e) {
+        console.error("Chyba při vytváření záznamu uživatele:", e);
+      }
+    }
+
+    // Neukládáme uživatele do cache, pokud není potvrzený
+    if (data.user.email_confirmed_at) {
+      const user = mapSupabaseUserToAppUser(data.user);
+      this.setCachedUser(user);
+      return user;
+    }
+
+    // Pokud není potvrzený, vyhodíme chybu s informací o emailu
+    throw new Error(
+      "Registrace proběhla úspěšně! Zkontrolujte svůj email a potvrďte registraci kliknutím na odkaz v emailu."
+    );
   },
 
   async logout(): Promise<void> {

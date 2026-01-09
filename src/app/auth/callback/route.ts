@@ -59,13 +59,40 @@ export async function GET(req: NextRequest) {
       // Přesměruj na profil uživatele
       const userId = data?.session?.user?.id;
       if (userId) {
-        // Načíst nickname z DB pomocí admin clienta (obejde RLS)
         const admin = createAdminSupabaseClient();
+        const userMetadata = data?.session?.user?.user_metadata || {};
+        const nickname = userMetadata.nickname;
+
+        // Zkontrolovat, zda už existuje záznam v users tabulce
+        const { data: existingUser } = await admin
+          .from("users")
+          .select("nickname")
+          .eq("id", userId)
+          .maybeSingle();
+
+        // Pokud záznam neexistuje a máme nickname, vytvoříme ho
+        if (!existingUser && nickname) {
+          try {
+            await admin.from("users").insert({
+              id: userId,
+              nickname: nickname,
+              role: "user",
+            });
+          } catch (e) {
+            console.error(
+              "Chyba při vytváření záznamu uživatele v callback:",
+              e
+            );
+          }
+        }
+
+        // Načíst nickname z DB (buď existující nebo nově vytvořený)
         const { data: userData } = await admin
           .from("users")
           .select("nickname")
           .eq("id", userId)
           .single();
+
         // Slugifikovat nickname pro URL (bez diakritiky, malá písmena)
         const slug = userData?.nickname
           ? slugifyNickname(userData.nickname)

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
+import { slugifyNickname } from "@/utils/slugify";
 
 function getAccessTokenFromStorage(): string | null {
   try {
@@ -78,6 +79,9 @@ function CommentItem({ comment }: { comment: CommentItemType }) {
     "U";
   const initials = initialsSource.slice(0, 2).toUpperCase();
   const avatar = comment.users?.avatar_url;
+  const nickname = comment.users?.nickname;
+  const profileLink = nickname ? `/profil/${slugifyNickname(nickname)}` : null;
+  
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm text-gray-600">
@@ -94,9 +98,18 @@ function CommentItem({ comment }: { comment: CommentItemType }) {
               {initials}
             </span>
           )}
-          <span className="font-medium text-gray-800">
-            {authorLabel(comment)}
-          </span>
+          {profileLink ? (
+            <Link
+              href={profileLink}
+              className="font-medium text-gray-800 hover:text-green-700 hover:underline transition-colors"
+            >
+              {authorLabel(comment)}
+            </Link>
+          ) : (
+            <span className="font-medium text-gray-800">
+              {authorLabel(comment)}
+            </span>
+          )}
         </div>
         <span>{formatDate(comment.created_at)}</span>
       </div>

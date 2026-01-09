@@ -11,7 +11,7 @@ import { validatePasswordStrength } from "@/utils/password";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
-    name: "",
+    nickname: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -25,6 +25,26 @@ export default function RegisterPage() {
     e.preventDefault();
     setLocalError(null);
 
+    // Validace přezdívky
+    const trimmedNickname = formData.nickname.trim();
+    if (!trimmedNickname) {
+      setLocalError("Přezdívka je povinná!");
+      return;
+    }
+    if (trimmedNickname.length < 3) {
+      setLocalError("Přezdívka musí mít alespoň 3 znaky!");
+      return;
+    }
+    if (trimmedNickname.length > 30) {
+      setLocalError("Přezdívka může mít maximálně 30 znaků!");
+      return;
+    }
+    // Povolené znaky: písmena, čísla, pomlčky, podtržítka
+    if (!/^[a-zA-Z0-9_-]+$/.test(trimmedNickname)) {
+      setLocalError("Přezdívka může obsahovat pouze písmena, čísla, pomlčky a podtržítka!");
+      return;
+    }
+
     const strengthError = validatePasswordStrength(formData.password);
     if (strengthError) {
       setLocalError(strengthError);
@@ -37,13 +57,25 @@ export default function RegisterPage() {
     }
 
     try {
-      await register(formData);
+      await register({
+        ...formData,
+        nickname: trimmedNickname,
+      });
+      // Toto by se nemělo stát, protože register vyhodí chybu pokud není potvrzený email
       toast.success("Registrace proběhla úspěšně.");
-      // Po registraci přesměruj na homepage - uživatel se pak přihlásí a půjde na profil
       router.push("/");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Chyba při registraci");
-      setLocalError(err instanceof Error ? err.message : "Neznámá chyba");
+      const errorMessage = err instanceof Error ? err.message : "Chyba při registraci";
+      
+      // Pokud je to zpráva o potvrzení emailu, přesměruj na login stránku (ta zobrazí zprávu)
+      if (errorMessage.includes("potvrďte registraci") || errorMessage.includes("zkontrolujte svůj email")) {
+        setLocalError(null);
+        // Okamžitě přesměruj na login stránku
+        router.push("/auth/login?message=email-confirmation");
+      } else {
+        toast.error(errorMessage);
+        setLocalError(errorMessage);
+      }
     }
   };
 
@@ -78,22 +110,22 @@ export default function RegisterPage() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label
-                htmlFor="name"
+                htmlFor="nickname"
                 className="block text-sm font-medium text-gray-700"
               >
-                Jméno a příjmení
+                Přezdívka
               </label>
               <div className="mt-1">
                 <input
-                  id="name"
-                  name="name"
+                  id="nickname"
+                  name="nickname"
                   type="text"
-                  autoComplete="name"
+                  autoComplete="username"
                   required
-                  value={formData.name}
+                  value={formData.nickname}
                   onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-                  placeholder="Jan Novák"
+                  placeholder="CestovatelSvetem"
                 />
               </div>
             </div>

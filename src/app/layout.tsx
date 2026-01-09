@@ -24,6 +24,9 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "Destinote",
   description: "Interaktivní mapa světa v Next.js",
+  icons: {
+    icon: "/logo-sm2.png",
+  },
 };
 
 export default function RootLayout({
