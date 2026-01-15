@@ -202,20 +202,9 @@ export default function DashboardPublicWorldMap({
           } as any);
           console.log("[MAP] source ensured: countries-public");
 
-          // spočítat celkový počet zemí (unikátní ISO2 z GeoJSONu)
-          const allIsoSet = new Set<string>();
-          try {
-            const geojson: any = data;
-            for (const f of (geojson?.features as any[]) || []) {
-              const props: any = f?.properties || {};
-              const iso2 = getIso2FromProps(props);
-              if (!iso2) continue;
-              allIsoSet.add(normalizeIso2(iso2));
-            }
-          } catch (e) {
-            console.warn("[MAP] counting total countries failed:", e);
-          }
-          setTotalCountries(allIsoSet.size);
+          // Počet suverénních států (195 podle OSN)
+          // GeoJSON obsahuje i závislá území, takže používáme pevné číslo
+          setTotalCountries(195);
 
           // Předvybarvení již navštívených zemí z DB
           try {

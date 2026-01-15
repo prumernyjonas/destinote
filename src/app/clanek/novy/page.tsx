@@ -26,6 +26,9 @@ export default function NewArticlePage() {
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [travelAnimation, setTravelAnimation] = useState<any>(null);
+  const [selectedCountryId, setSelectedCountryId] = useState<string>("");
+  const [countries, setCountries] = useState<Array<{ id: string; name: string; iso_code: string }>>([]);
+  const [loadingCountries, setLoadingCountries] = useState(false);
 
   // Kontrola přihlášení při načtení stránky
   useEffect(() => {
@@ -40,6 +43,27 @@ export default function NewArticlePage() {
       .then((res) => res.json())
       .then((data) => setTravelAnimation(data))
       .catch((err) => console.error("Failed to load Travel.json:", err));
+  }, []);
+
+  // Načíst seznam zemí
+  useEffect(() => {
+    const loadCountries = async () => {
+      setLoadingCountries(true);
+      try {
+        const res = await fetch("/api/countries/list");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ok && Array.isArray(data.data)) {
+            setCountries(data.data);
+          }
+        }
+      } catch (err) {
+        console.error("Chyba při načítání zemí:", err);
+      } finally {
+        setLoadingCountries(false);
+      }
+    };
+    loadCountries();
   }, []);
 
   // Vytvoří/zruší object URL náhledu pro vybraný soubor
@@ -233,10 +257,51 @@ export default function NewArticlePage() {
         }
       );
 
+      // Připravit payload - destination_id musí být buď validní UUID nebo null
+      const payload: any = {
+        title,
+        summary: summary || null,
+        content,
+        ...coverPayload,
+      };
+      
+      // Validace destination_id - musí být validní UUID nebo null
+      // UUID formát: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      
+      if (selectedCountryId && selectedCountryId.trim() !== "") {
+        const trimmedId = selectedCountryId.trim();
+        // Zkontrolovat, zda je to validní UUID
+        if (uuidRegex.test(trimmedId)) {
+          // Zkontrolovat, zda země existuje v načteném seznamu
+          const countryExists = countries.some(c => c.id === trimmedId);
+          if (countryExists) {
+            payload.destination_id = trimmedId;
+          } else {
+            console.warn("[new-article] Selected country ID not found in countries list:", trimmedId);
+            payload.destination_id = null;
+          }
+        } else {
+          console.warn("[new-article] Invalid UUID format for destination_id:", trimmedId);
+          payload.destination_id = null;
+        }
+      } else {
+        payload.destination_id = null;
+      }
+
+      console.log("[new-article] Sending request to /api/articles with payload:", {
+        hasTitle: !!payload.title,
+        hasContent: !!payload.content,
+        hasSummary: !!payload.summary,
+        hasCover: !!payload.main_image_url,
+        hasDestination: !!payload.destination_id,
+        destinationId: payload.destination_id,
+      });
+
       const res = await fetch("/api/articles", {
         method: "POST",
         headers,
-        body: JSON.stringify({ title, summary, content, ...coverPayload }),
+        body: JSON.stringify(payload),
       });
 
       console.log("[new-article] create status:", res.status);
@@ -246,24 +311,32 @@ export default function NewArticlePage() {
       );
 
       if (!res.ok) {
-        const errorText = await res.text().catch(() => "Unknown error");
+        let errorText = "";
         let errorData: any = {};
         try {
+          errorText = await res.text();
           if (errorText && errorText.trim()) {
-            errorData = JSON.parse(errorText);
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              // Pokud není validní JSON, použijeme text jako chybu
+              if (errorText && errorText !== "Unknown error") {
+                errorData = { error: errorText };
+              }
+            }
           }
-        } catch {
-          // Pokud není validní JSON, použijeme text jako chybu
-          if (errorText && errorText.trim() && errorText !== "Unknown error") {
-            errorData = { error: errorText };
-          }
+        } catch (e) {
+          errorText = "Nepodařilo se načíst chybovou zprávu";
+          console.error("[new-article] Error reading response:", e);
         }
+        
         console.error("[new-article] create error:", {
           status: res.status,
           statusText: res.statusText,
           errorData,
           errorText,
         });
+        
         const errorMessage =
           errorData?.error ||
           errorText ||
@@ -478,6 +551,30 @@ export default function NewArticlePage() {
               onChange={(e) => setSummary(e.target.value)}
               placeholder="Krátké uvedení článku"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Země (volitelné)
+            </label>
+            <select
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 px-3 py-2 bg-white"
+              value={selectedCountryId}
+              onChange={(e) => setSelectedCountryId(e.target.value)}
+            >
+              <option value="">-- Vyberte zemi (volitelné) --</option>
+              {loadingCountries ? (
+                <option disabled>Načítání zemí...</option>
+              ) : (
+                countries.map((country) => (
+                  <option key={country.id} value={country.id}>
+                    {country.name}
+                  </option>
+                ))
+              )}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Vyberte zemi, o které článek pojednává. Pokud článek není o konkrétní zemi, můžete toto pole ponechat prázdné.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

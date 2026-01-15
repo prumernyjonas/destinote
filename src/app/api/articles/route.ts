@@ -69,11 +69,52 @@ export async function POST(req: NextRequest) {
       );
     }
     const admin = createAdminSupabaseClient();
+    
+    // Validace destination_id - pokud je poskytnut, musí existovat v databázi
+    let validatedDestinationId: string | null = null;
+    if (destination_id && typeof destination_id === "string" && destination_id.trim() !== "") {
+      const trimmedId = destination_id.trim();
+      // Zkontrolovat, zda je to validní UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(trimmedId)) {
+        // Zkontrolovat, zda země existuje v databázi
+        const { data: countryData, error: countryError } = await admin
+          .from("countries")
+          .select("id")
+          .eq("id", trimmedId)
+          .maybeSingle();
+        
+        if (countryError) {
+          console.error("[articles.POST] Error checking country:", countryError);
+          return new Response(
+            JSON.stringify({ error: "Chyba při ověřování země" }),
+            { status: 500 }
+          );
+        }
+        
+        if (countryData) {
+          validatedDestinationId = trimmedId;
+        } else {
+          console.warn("[articles.POST] Country not found:", trimmedId);
+          return new Response(
+            JSON.stringify({ error: "Vybraná země neexistuje v databázi" }),
+            { status: 400 }
+          );
+        }
+      } else {
+        console.warn("[articles.POST] Invalid UUID format for destination_id:", trimmedId);
+        return new Response(
+          JSON.stringify({ error: "Neplatný formát ID země" }),
+          { status: 400 }
+        );
+      }
+    }
+    
     const baseSlug = slugify(title);
 
     const toInsert = {
       author_id: userId,
-      destination_id: destination_id ?? null,
+      destination_id: validatedDestinationId,
       title,
       slug: baseSlug,
       summary: summary ?? null,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { validatePasswordStrength } from "@/utils/password";
+import { authUtils } from "@/utils/supabase";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -17,6 +18,10 @@ export default function RegisterPage() {
     confirmPassword: "",
   });
   const [localError, setLocalError] = useState<string | null>(null);
+  const [nicknameChecking, setNicknameChecking] = useState(false);
+  const [nicknameAvailable, setNicknameAvailable] = useState<boolean | null>(
+    null
+  );
   const { register, loading, error } = useAuth();
   const router = useRouter();
   const toast = useToast();
@@ -39,10 +44,40 @@ export default function RegisterPage() {
       setLocalError("Přezdívka může mít maximálně 30 znaků!");
       return;
     }
-    // Povolené znaky: písmena, čísla, pomlčky, podtržítka
-    if (!/^[a-zA-Z0-9_-]+$/.test(trimmedNickname)) {
-      setLocalError("Přezdívka může obsahovat pouze písmena, čísla, pomlčky a podtržítka!");
+    // Povolené znaky: písmena (včetně diakritiky), čísla, pomlčky, podtržítka
+    // Povolujeme Unicode písmena (včetně českých znaků), čísla, pomlčky a podtržítka
+    if (!/^[\p{L}\p{N}_-]+$/u.test(trimmedNickname)) {
+      setLocalError(
+        "Přezdívka může obsahovat pouze písmena (včetně diakritiky), čísla, pomlčky a podtržítka!"
+      );
       return;
+    }
+
+    // Kontrola, zda nickname už existuje (podle slugifikované verze)
+    try {
+      setNicknameChecking(true);
+      const response = await fetch(
+        `/api/users/check-nickname?nickname=${encodeURIComponent(
+          trimmedNickname
+        )}`
+      );
+      const data = await response.json();
+
+      if (!data.available) {
+        setLocalError(
+          data.message ||
+            `Přezdívka "${trimmedNickname}" je již obsazena. Zkuste jinou přezdívku.`
+        );
+        setNicknameAvailable(false);
+        setNicknameChecking(false);
+        return;
+      }
+      setNicknameAvailable(true);
+    } catch (err) {
+      console.error("Chyba při kontrole nicknamu:", err);
+      // Pokračujeme i při chybě - kontrola se provede i na backendu
+    } finally {
+      setNicknameChecking(false);
     }
 
     const strengthError = validatePasswordStrength(formData.password);
@@ -65,10 +100,14 @@ export default function RegisterPage() {
       toast.success("Registrace proběhla úspěšně.");
       router.push("/");
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Chyba při registraci";
-      
+      const errorMessage =
+        err instanceof Error ? err.message : "Chyba při registraci";
+
       // Pokud je to zpráva o potvrzení emailu, přesměruj na login stránku (ta zobrazí zprávu)
-      if (errorMessage.includes("potvrďte registraci") || errorMessage.includes("zkontrolujte svůj email")) {
+      if (
+        errorMessage.includes("potvrďte registraci") ||
+        errorMessage.includes("zkontrolujte svůj email")
+      ) {
         setLocalError(null);
         // Okamžitě přesměruj na login stránku
         router.push("/auth/login?message=email-confirmation");
@@ -80,18 +119,63 @@ export default function RegisterPage() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [e.target.name]: newValue,
     });
+
+    // Resetovat stav dostupnosti nicknamu při změně
+    if (e.target.name === "nickname") {
+      setNicknameAvailable(null);
+      setLocalError(null);
+    }
   };
+
+  // Debounced kontrola nicknamu při psaní
+  useEffect(() => {
+    const trimmedNickname = formData.nickname.trim();
+
+    // Kontrolovat pouze pokud je nickname dostatečně dlouhý a validní
+    if (
+      trimmedNickname.length >= 3 &&
+      /^[\p{L}\p{N}_-]+$/u.test(trimmedNickname)
+    ) {
+      const timeoutId = setTimeout(async () => {
+        try {
+          setNicknameChecking(true);
+          const response = await fetch(
+            `/api/users/check-nickname?nickname=${encodeURIComponent(
+              trimmedNickname
+            )}`
+          );
+          const data = await response.json();
+          setNicknameAvailable(data.available);
+          if (!data.available && formData.nickname === trimmedNickname) {
+            setLocalError(
+              data.message || `Přezdívka "${trimmedNickname}" je již obsazena.`
+            );
+          } else if (data.available && formData.nickname === trimmedNickname) {
+            setLocalError(null);
+          }
+        } catch (err) {
+          console.error("Chyba při kontrole nicknamu:", err);
+        } finally {
+          setNicknameChecking(false);
+        }
+      }, 500); // Debounce 500ms
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      setNicknameAvailable(null);
+    }
+  }, [formData.nickname]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Destinote</h1>
-          <h2 className="text-2xl font-bold text-gray-900">Registrace</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Registrujte se</h2>
           <p className="mt-2 text-sm text-gray-600">
             Nebo{" "}
             <Link
@@ -115,7 +199,7 @@ export default function RegisterPage() {
               >
                 Přezdívka
               </label>
-              <div className="mt-1">
+              <div className="mt-1 relative">
                 <input
                   id="nickname"
                   name="nickname"
@@ -124,10 +208,42 @@ export default function RegisterPage() {
                   required
                   value={formData.nickname}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                  className={`appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm ${
+                    nicknameAvailable === true
+                      ? "border-green-500"
+                      : nicknameAvailable === false
+                      ? "border-red-500"
+                      : "border-gray-300"
+                  }`}
                   placeholder="CestovatelSvetem"
                 />
+                {nicknameChecking && (
+                  <div className="absolute right-3 top-2.5">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                  </div>
+                )}
+                {!nicknameChecking && nicknameAvailable === true && (
+                  <div className="absolute right-3 top-2.5 text-green-500">
+                    ✓
+                  </div>
+                )}
+                {!nicknameChecking && nicknameAvailable === false && (
+                  <div className="absolute right-3 top-2.5 text-red-500">✗</div>
+                )}
               </div>
+              {nicknameAvailable === false &&
+                formData.nickname.trim().length >= 3 && (
+                  <p className="mt-1 text-sm text-red-600">
+                    Tato přezdívka je již obsazena (včetně variant s diakritikou
+                    a velkými písmeny)
+                  </p>
+                )}
+              {nicknameAvailable === true &&
+                formData.nickname.trim().length >= 3 && (
+                  <p className="mt-1 text-sm text-green-600">
+                    Přezdívka je dostupná
+                  </p>
+                )}
             </div>
 
             <div>
@@ -243,10 +359,21 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                <span className="sr-only">Registrovat se pomocí Google</span>
-                <svg className="h-5 w-5" viewBox="0 0 24 24">
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await authUtils.loginWithGoogle();
+                  } catch (err: any) {
+                    toast.error(
+                      err.message || "Chyba při přihlášení přes Google"
+                    );
+                  }
+                }}
+                className="w-full inline-flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+              >
+                <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -264,17 +391,7 @@ export default function RegisterPage() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-              </button>
-
-              <button className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                <span className="sr-only">Registrovat se pomocí Facebook</span>
-                <svg
-                  className="h-5 w-5"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-                </svg>
+                <span>Přihlásit přes Google</span>
               </button>
             </div>
           </div>

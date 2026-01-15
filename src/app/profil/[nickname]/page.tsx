@@ -22,6 +22,7 @@ import { BadgesGrid } from "@/components/dashboard/BadgesGrid";
 import DashboardPublicWorldMap from "@/components/DashboardPublicWorldMap";
 import Link from "next/link";
 import Image from "next/image";
+import { FiMap, FiFileText, FiAward } from "react-icons/fi";
 
 type Article = {
   id: string;
@@ -74,13 +75,39 @@ export default function ProfilePage({
 
   const isOwnProfile = user?.uid === profile?.id;
 
-  // Přesměrovat na slugifikovanou URL, pokud nickname obsahuje háčky/čárky
+  // Přesměrovat z UUID na slug, pokud je parametr UUID a máme načtený profil
   useEffect(() => {
-    const slugged = slugifyNickname(decodeURIComponent(nickname));
-    if (slugged !== nickname) {
+    const decodedNickname = decodeURIComponent(nickname);
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        decodedNickname
+      );
+
+    if (isUuid && profile) {
+      // Pokud máme profil načtený a parametr je UUID, přesměrujeme na slug
+      const slugged = slugifyNickname(profile.nickname);
       const tab = searchParams?.get("tab");
       const url = tab ? `/profil/${slugged}?tab=${tab}` : `/profil/${slugged}`;
       router.replace(url);
+    }
+  }, [nickname, profile, router, searchParams]);
+
+  // Přesměrovat na slugifikovanou URL, pokud nickname obsahuje háčky/čárky
+  useEffect(() => {
+    const decodedNickname = decodeURIComponent(nickname);
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        decodedNickname
+      );
+    
+    // Přesměrovat jen pokud to není UUID (UUID se řeší v jiném useEffect)
+    if (!isUuid) {
+      const slugged = slugifyNickname(decodedNickname);
+      if (slugged !== nickname) {
+        const tab = searchParams?.get("tab");
+        const url = tab ? `/profil/${slugged}?tab=${tab}` : `/profil/${slugged}`;
+        router.replace(url);
+      }
     }
   }, [nickname, router, searchParams]);
 
@@ -360,33 +387,36 @@ export default function ProfilePage({
             <div className="flex space-x-8">
               <button
                 onClick={() => handleTabChange("map")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 ${
+                className={`py-4 px-1 border-b-2 font-medium text-sm cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-2 ${
                   activeTab === "map"
                     ? "border-emerald-500 text-emerald-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                🗺️ Mapa cest
+                <FiMap className="w-4 h-4" />
+                Mapa cest
               </button>
               <button
                 onClick={() => handleTabChange("articles")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 ${
+                className={`py-4 px-1 border-b-2 font-medium text-sm cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-2 ${
                   activeTab === "articles"
                     ? "border-emerald-500 text-emerald-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                📝 Moje články
+                <FiFileText className="w-4 h-4" />
+                Moje články
               </button>
               <button
                 onClick={() => handleTabChange("badges")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 ${
+                className={`py-4 px-1 border-b-2 font-medium text-sm cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-2 ${
                   activeTab === "badges"
                     ? "border-emerald-500 text-emerald-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                🏆 Odznaky
+                <FiAward className="w-4 h-4" />
+                Odznaky
               </button>
             </div>
           </div>
@@ -576,7 +606,10 @@ export default function ProfilePage({
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>🗺️ Interaktivní mapa cest</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <FiMap className="w-5 h-5" />
+                      Interaktivní mapa cest
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <DashboardPublicWorldMap
@@ -654,7 +687,10 @@ export default function ProfilePage({
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle>📝 Moje články ({articles.length})</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <FiFileText className="w-5 h-5" />
+                      Moje články ({articles.length})
+                    </CardTitle>
                     <Link
                       href="/clanek/novy"
                       className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors text-sm"
@@ -686,7 +722,7 @@ export default function ProfilePage({
                             />
                           ) : (
                             <div className="w-20 h-15 bg-gray-200 rounded flex items-center justify-center">
-                              <span className="text-gray-400 text-2xl">📝</span>
+                              <FiFileText className="w-8 h-8 text-gray-400" />
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
@@ -736,7 +772,10 @@ export default function ProfilePage({
             {activeTab === "badges" && (
               <Card>
                 <CardHeader>
-                  <CardTitle>🏆 Odznaky</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <FiAward className="w-5 h-5" />
+                    Odznaky
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <BadgesGrid badges={badges} />
@@ -802,7 +841,7 @@ export default function ProfilePage({
                             </div>
                           ) : (
                             <div className="w-full h-40 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                              <span className="text-4xl">📝</span>
+                              <FiFileText className="w-12 h-12 text-gray-400" />
                             </div>
                           )}
                           <div className="p-4">

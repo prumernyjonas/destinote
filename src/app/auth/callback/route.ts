@@ -61,7 +61,30 @@ export async function GET(req: NextRequest) {
       if (userId) {
         const admin = createAdminSupabaseClient();
         const userMetadata = data?.session?.user?.user_metadata || {};
-        const nickname = userMetadata.nickname;
+        const userEmail = data?.session?.user?.email || "";
+
+        // Zajistit, že používáme nickname z metadata, ne z emailu
+        // NIKDY nepoužívat email jako fallback pro nickname!
+        const nickname = userMetadata.nickname?.trim() || null;
+
+        // Debug logování
+        if (!nickname) {
+          console.error(
+            "VAROVÁNÍ: Nickname není v user_metadata pro uživatele:",
+            userId,
+            "Email:",
+            userEmail,
+            "Metadata:",
+            JSON.stringify(userMetadata, null, 2)
+          );
+        } else {
+          console.log(
+            "Nickname z metadata:",
+            nickname,
+            "pro uživatele:",
+            userId
+          );
+        }
 
         // Zkontrolovat, zda už existuje záznam v users tabulce
         const { data: existingUser } = await admin
@@ -70,28 +93,112 @@ export async function GET(req: NextRequest) {
           .eq("id", userId)
           .maybeSingle();
 
-        // Pokud záznam neexistuje a máme nickname, vytvoříme ho
-        if (!existingUser && nickname) {
-          try {
-            await admin.from("users").insert({
-              id: userId,
-              nickname: nickname,
-              role: "user",
-            });
-          } catch (e) {
+        // Pokud záznam neexistuje a máme nickname z metadata, vytvoříme ho
+        if (!existingUser) {
+          if (nickname) {
+            try {
+              const insertResult = await admin
+                .from("users")
+                .insert({
+                  id: userId,
+                  nickname: nickname,
+                  role: "user",
+                })
+                .select();
+
+              console.log(
+                "Vytvořen záznam uživatele s nicknamem:",
+                nickname,
+                "Výsledek:",
+                insertResult
+              );
+            } catch (e) {
+              console.error(
+                "Chyba při vytváření záznamu uživatele v callback:",
+                e
+              );
+            }
+          } else {
+            // Pokud nemáme nickname v metadata, zalogujme to pro debug
             console.error(
-              "Chyba při vytváření záznamu uživatele v callback:",
-              e
+              "CHYBA: Nickname není v user_metadata pro uživatele:",
+              userId,
+              "Email:",
+              userEmail,
+              "Metadata:",
+              JSON.stringify(userMetadata, null, 2)
+            );
+            // NIKDY nevytvářet nickname z emailu!
+            // Místo vyhození chyby přesměrujeme na login stránku s chybovou zprávou
+            return NextResponse.redirect(
+              new URL(
+                `/auth/login?error=${encodeURIComponent(
+                  "Nickname není v user_metadata. Zkontrolujte, zda se metadata správně ukládají při registraci."
+                )}`,
+                baseUrl
+              )
+            );
+          }
+        } else {
+          // Pokud už existuje záznam, zkontrolujme, zda má správný nickname
+          const emailBasedNickname = userEmail.split("@")[0];
+
+          // Pokud existující nickname vypadá jako email (např. "jonas.sury"), ale máme jiný v metadata, aktualizujme
+          if (
+            nickname &&
+            existingUser.nickname !== nickname &&
+            (existingUser.nickname === emailBasedNickname ||
+              existingUser.nickname === userEmail.split("@")[0].toLowerCase())
+          ) {
+            console.log(
+              "Aktualizuji nickname z",
+              existingUser.nickname,
+              "na",
+              nickname,
+              "pro uživatele:",
+              userId
+            );
+            try {
+              await admin
+                .from("users")
+                .update({ nickname: nickname })
+                .eq("id", userId);
+            } catch (e) {
+              console.error("Chyba při aktualizaci nicknamu v callback:", e);
+            }
+          } else if (
+            !nickname &&
+            existingUser.nickname === emailBasedNickname
+          ) {
+            // Pokud nemáme nickname v metadata, ale existující je z emailu, zalogujme to
+            console.error(
+              "VAROVÁNÍ: Existující nickname je z emailu (",
+              existingUser.nickname,
+              "), ale metadata neobsahuje nickname pro uživatele:",
+              userId
             );
           }
         }
 
         // Načíst nickname z DB (buď existující nebo nově vytvořený)
-        const { data: userData } = await admin
+        const { data: userData, error: userDataError } = await admin
           .from("users")
           .select("nickname")
           .eq("id", userId)
-          .single();
+          .maybeSingle();
+
+        // Pokud se nepodařilo načíst záznam, přesměrujeme na login s chybou
+        if (userDataError) {
+          console.error("Chyba při načítání uživatele z DB:", userDataError);
+          return NextResponse.redirect(
+            new URL(
+              `/auth/login?error=${encodeURIComponent(
+                "Chyba při načítání uživatelského profilu. Zkuste se znovu přihlásit."
+              )}`,
+              baseUrl
+            )
+          );
+        }
 
         // Slugifikovat nickname pro URL (bez diakritiky, malá písmena)
         const slug = userData?.nickname

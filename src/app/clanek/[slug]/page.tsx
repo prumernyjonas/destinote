@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import ArticleComments from "@/components/articles/ArticleComments";
@@ -18,7 +19,17 @@ type ArticleRecord = {
   main_image_alt: string | null;
   main_image_width: number | null;
   main_image_height: number | null;
+  destination_id: string | null;
 };
+
+type CountryInfo = {
+  id: string;
+  name: string;
+  name_cs: string | null;
+  iso_code: string | null;
+  slug: string | null;
+  continent_slug: string | null;
+} | null;
 
 export const revalidate = 0;
 
@@ -27,7 +38,7 @@ async function getArticle(slug: string): Promise<ArticleRecord | null> {
   const { data, error } = await admin
     .from("articles")
     .select(
-      "id, slug, title, summary, content, author_id, status, published_at, created_at, main_image_url, main_image_alt, main_image_width, main_image_height"
+      "id, slug, title, summary, content, author_id, status, published_at, created_at, main_image_url, main_image_alt, main_image_width, main_image_height, destination_id"
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -42,6 +53,23 @@ async function getArticle(slug: string): Promise<ArticleRecord | null> {
   }
 
   return data as ArticleRecord;
+}
+
+async function getCountryInfo(countryId: string | null): Promise<CountryInfo> {
+  if (!countryId) return null;
+  
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin
+    .from("countries")
+    .select("id, name, name_cs, iso_code, slug, continent_slug")
+    .eq("id", countryId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data as CountryInfo;
 }
 
 function formatDate(value: string | null) {
@@ -112,16 +140,42 @@ export default async function ArticlePage({
     notFound();
   }
 
+  const country = await getCountryInfo(article.destination_id);
   const publishedLabel =
     formatDate(article.published_at) || formatDate(article.created_at);
+
+  // Získat URL pro zemi
+  const countryUrl = country?.slug && country?.continent_slug
+    ? `/zeme/${country.continent_slug}/${country.slug}`
+    : null;
+  const countryName = country?.name_cs || country?.name || null;
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-4xl space-y-8">
         <div className="space-y-2">
-          {publishedLabel ? (
-            <p className="text-sm text-gray-500">Publikováno {publishedLabel}</p>
-          ) : null}
+          <div className="flex items-center gap-3 flex-wrap">
+            {publishedLabel ? (
+              <p className="text-sm text-gray-500">Publikováno {publishedLabel}</p>
+            ) : null}
+            {countryName && (
+              <div className="flex items-center gap-2">
+                {country?.iso_code && (
+                  <span className={`fi fi-${country.iso_code.toLowerCase()}`} />
+                )}
+                {countryUrl ? (
+                  <Link
+                    href={countryUrl}
+                    className="text-sm text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
+                  >
+                    {countryName}
+                  </Link>
+                ) : (
+                  <span className="text-sm text-gray-600">{countryName}</span>
+                )}
+              </div>
+            )}
+          </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
             {article.title}
           </h1>

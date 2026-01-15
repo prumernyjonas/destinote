@@ -141,6 +141,39 @@ export const authUtils = {
       throw new Error("Hesla se neshodují");
     }
 
+    // Validace vstupních dat
+    if (!credentials.email || !credentials.email.trim()) {
+      throw new Error("Email je povinný");
+    }
+    if (!credentials.password || credentials.password.length < 8) {
+      throw new Error("Heslo musí mít alespoň 8 znaků");
+    }
+    if (!credentials.nickname || !credentials.nickname.trim()) {
+      throw new Error("Přezdívka je povinná");
+    }
+
+    // Kontrola, zda nickname už existuje (podle slugifikované verze)
+    try {
+      const checkResponse = await fetch(
+        `/api/users/check-nickname?nickname=${encodeURIComponent(credentials.nickname.trim())}`
+      );
+      const checkData = await checkResponse.json();
+      
+      if (!checkData.available) {
+        throw new Error(
+          checkData.message || 
+          `Přezdívka "${credentials.nickname}" je již obsazena. Zkuste jinou přezdívku.`
+        );
+      }
+    } catch (err: any) {
+      // Pokud je to chyba o obsazeném nicknamu, propaguj ji
+      if (err.message?.includes("obsazena") || err.message?.includes("dostupná")) {
+        throw err;
+      }
+      // Jinak pokračujeme - kontrola se provede i v databázi
+      console.warn("Chyba při kontrole nicknamu před registrací:", err);
+    }
+
     // Získat správnou URL pro redirect
     let redirectUrl: string | undefined;
     if (typeof window !== "undefined") {
@@ -150,6 +183,22 @@ export const authUtils = {
       // Pokud je nastavena environment variable, použijeme ji
       redirectUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
     }
+
+    // Pokud není redirect URL nastavená, použijeme fallback
+    if (!redirectUrl) {
+      console.warn("Redirect URL není nastavená, používá se fallback");
+      redirectUrl = "http://localhost:3000/auth/callback";
+    }
+
+    // Debug: zalogovat, co se ukládá do metadata
+    console.log(
+      "Registrace - ukládám nickname do metadata:",
+      credentials.nickname,
+      "pro email:",
+      credentials.email,
+      "redirect URL:",
+      redirectUrl
+    );
 
     const { data, error } = await supabase.auth.signUp({
       email: credentials.email,
@@ -163,7 +212,60 @@ export const authUtils = {
     });
 
     if (error) {
-      throw new Error(error.message);
+      // Lepší error handling - zobrazit konkrétní chybovou zprávu
+      console.error("Supabase signUp error:", {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+      });
+      
+      // Pokud je to chyba s databází (500), může to být problém s triggerem nebo RLS
+      if (error.status === 500 && error.message?.includes("Database error")) {
+        throw new Error(
+          `Chyba při vytváření uživatelského účtu v databázi. ` +
+          `Zkontrolujte prosím, zda je v Supabase databázi nastaven trigger pro automatické vytvoření záznamu v users tabulce. ` +
+          `Spusťte SQL skript z docs/sql/create_user_trigger.sql v Supabase SQL Editoru. ` +
+          `Původní chyba: ${error.message}`
+        );
+      }
+      
+      // Pokud je to chyba s redirect URL
+      if (error.message?.includes("redirect")) {
+        throw new Error(
+          `Chyba při registraci: ${error.message}. ` +
+          `Zkontrolujte prosím, zda je URL ${redirectUrl} přidána do whitelistu redirect URL v Supabase dashboardu.`
+        );
+      }
+      
+      // Pokud je to chyba s nicknamem (např. už existuje)
+      if (error.message?.includes("nickname") || error.message?.includes("unique") || error.message?.includes("duplicate")) {
+        throw new Error(
+          `Přezdívka "${credentials.nickname}" je již obsazena nebo obsahuje neplatné znaky. ` +
+          `Zkuste prosím jinou přezdívku.`
+        );
+      }
+      
+      throw new Error(error.message || "Chyba při registraci");
+    }
+
+    // Debug: zkontrolovat, zda se metadata správně uložila
+    if (data.user) {
+      const savedMetadata = data.user.user_metadata || {};
+      console.log(
+        "Registrace - uložená metadata:",
+        JSON.stringify(savedMetadata, null, 2),
+        "Nickname v metadata:",
+        savedMetadata.nickname
+      );
+
+      if (savedMetadata.nickname !== credentials.nickname) {
+        console.error(
+          "VAROVÁNÍ: Nickname v metadata se neshoduje! Očekáváno:",
+          credentials.nickname,
+          "Uloženo:",
+          savedMetadata.nickname
+        );
+      }
     }
 
     // Pokud je email confirmation povoleno, data.user může být null
