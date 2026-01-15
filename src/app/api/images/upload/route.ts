@@ -71,10 +71,35 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       console.warn("[upload] Missing file");
-      return new Response(JSON.stringify({ error: "Missing file" }), {
+      return new Response(JSON.stringify({ error: "Chybí soubor k nahrání" }), {
         status: 400,
       });
     }
+
+    // Validace velikosti souboru (max 4 MB pro bezpečnost - Vercel má limit 4.5 MB)
+    const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 MB
+    if (file.size > MAX_FILE_SIZE) {
+      console.warn("[upload] File too large:", file.size);
+      return new Response(
+        JSON.stringify({
+          error: `Soubor je příliš velký. Maximální velikost je ${MAX_FILE_SIZE / 1024 / 1024} MB.`,
+        }),
+        { status: 400 }
+      );
+    }
+
+    // Validace typu souboru (pouze obrázky)
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      console.warn("[upload] Invalid file type:", file.type);
+      return new Response(
+        JSON.stringify({
+          error: `Nepodporovaný typ souboru. Povolené typy: JPEG, PNG, WebP, GIF.`,
+        }),
+        { status: 400 }
+      );
+    }
+
     console.log("[upload] file:", {
       name: (file as any)?.name,
       type: file.type,
@@ -83,9 +108,24 @@ export async function POST(req: NextRequest) {
       publicId: publicId || null,
     });
 
-    const cloudName = getEnv("CLOUDINARY_CLOUD_NAME");
-    const apiKey = getEnv("CLOUDINARY_API_KEY");
-    const apiSecret = getEnv("CLOUDINARY_API_SECRET");
+    // Kontrola environment proměnných s lepším error handlingem
+    let cloudName: string;
+    let apiKey: string;
+    let apiSecret: string;
+    try {
+      cloudName = getEnv("CLOUDINARY_CLOUD_NAME");
+      apiKey = getEnv("CLOUDINARY_API_KEY");
+      apiSecret = getEnv("CLOUDINARY_API_SECRET");
+    } catch (envErr: any) {
+      console.error("[upload] Missing Cloudinary env vars:", envErr.message);
+      return new Response(
+        JSON.stringify({
+          error: "Chyba konfigurace serveru. Kontaktujte administrátora.",
+          details: process.env.NODE_ENV === "development" ? envErr.message : undefined,
+        }),
+        { status: 500 }
+      );
+    }
     const timestamp = Math.floor(Date.now() / 1000);
 
     const paramsToSign = {
@@ -103,21 +143,51 @@ export async function POST(req: NextRequest) {
     if (folder) uploadForm.append("folder", folder);
     if (publicId) uploadForm.append("public_id", publicId);
 
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      {
-        method: "POST",
-        body: uploadForm,
+    // Timeout pro upload (60 sekund)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+    let res: Response;
+    let data: any;
+    try {
+      res = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+        {
+          method: "POST",
+          body: uploadForm,
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+      data = await res.json();
+      console.log("[upload] cloudinary response status:", res.status);
+    } catch (fetchErr: any) {
+      clearTimeout(timeoutId);
+      if (fetchErr.name === "AbortError") {
+        console.error("[upload] Upload timeout");
+        return new Response(
+          JSON.stringify({
+            error: "Nahrávání trvalo příliš dlouho. Zkuste použít menší obrázek.",
+          }),
+          { status: 408 }
+        );
       }
-    );
-    const data = await res.json();
-    console.log("[upload] cloudinary response status:", res.status);
-    if (!res.ok) {
-      console.error("[upload] cloudinary error:", data);
+      console.error("[upload] Fetch error:", fetchErr);
       return new Response(
-        JSON.stringify({ error: data?.error?.message || "Upload failed" }),
+        JSON.stringify({
+          error: "Chyba při komunikaci s Cloudinary. Zkuste to prosím znovu.",
+        }),
         { status: 500 }
       );
+    }
+
+    if (!res.ok) {
+      console.error("[upload] cloudinary error:", data);
+      const errorMessage =
+        data?.error?.message || "Nahrání obrázku selhalo. Zkuste to prosím znovu.";
+      return new Response(JSON.stringify({ error: errorMessage }), {
+        status: res.status >= 400 && res.status < 500 ? res.status : 500,
+      });
     }
 
     // Vracíme jen důležité hodnoty
@@ -140,11 +210,27 @@ export async function POST(req: NextRequest) {
     );
   } catch (err: any) {
     console.error("[upload] handler error:", err?.message, err);
+    // Pokud je to chyba s environment proměnnými, vraťme konkrétní hlášku
+    if (err?.message?.includes("Missing environment variable")) {
+      return new Response(
+        JSON.stringify({
+          error: "Chyba konfigurace serveru. Kontaktujte administrátora.",
+          details: process.env.NODE_ENV === "development" ? err.message : undefined,
+        }),
+        { status: 500 }
+      );
+    }
     return new Response(
-      JSON.stringify({ error: err?.message || "Upload error" }),
+      JSON.stringify({
+        error: err?.message || "Nastala neočekávaná chyba při nahrávání obrázku.",
+      }),
       { status: 500 }
     );
   }
 }
+
+// Export runtime konfigurace pro Vercel (prodloužení timeoutu)
+export const runtime = "nodejs";
+export const maxDuration = 60; // 60 sekund (max pro Pro plán)
 
 

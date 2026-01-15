@@ -37,6 +37,18 @@ export async function GET(req: NextRequest) {
     KIWI_LOCALE: process.env.KIWI_LOCALE || "cs",
     // OpenAI (pokud se používá)
     OPENAI_API_KEY: process.env.OPENAI_API_KEY ? "✅ Nastaveno" : "❌ Chybí",
+    // Cloudinary
+    CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME
+      ? "✅ Nastaveno"
+      : "❌ Chybí",
+    CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY
+      ? "✅ Nastaveno"
+      : "❌ Chybí",
+    CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
+      ? "✅ Nastaveno"
+      : "❌ Chybí",
+    NEXT_PUBLIC_CLOUDINARY_UPLOAD_FOLDER:
+      process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_FOLDER || "destinote_articles",
   };
 
   // Kontrola MapTiler klíče - zkontroluj, jestli nemá whitespace na konci
