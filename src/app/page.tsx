@@ -260,7 +260,7 @@ export default function Home() {
                     </Button>
                   </motion.div>
                 </Link>
-                <Link href="/auth/register">
+                <Link href="/registrace">
                   <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -293,13 +293,13 @@ export default function Home() {
                     label: "Cestovatelé",
                     value: "3,5k+",
                     icon: FiUsers,
-                    href: "/leaderboard",
+                    href: "/zebricek",
                   },
                   {
                     label: "Články",
                     value: `${Math.max(articles.length, 12)}+`,
                     icon: FiBookOpen,
-                    href: "/community",
+                    href: "/komunita",
                   },
                   {
                     label: "Země",
@@ -311,7 +311,7 @@ export default function Home() {
                     label: "Nejvyšší skóre cestovatele",
                     value: "4,4k",
                     icon: FiTrendingUp,
-                    href: "/leaderboard",
+                    href: "/zebricek",
                   },
                 ].map((item) => (
                   <Link
@@ -644,7 +644,7 @@ export default function Home() {
                 </Link>
               ))}
           </div>
-          <Link href="/community">
+          <Link href="/komunita">
             <Button
               variant="outline"
               className="border border-blue-900 hover:border-blue-900 hover:bg-blue-50 focus:border-blue-900 focus:ring-blue-900 text-blue-900 hover:text-blue-900 focus:text-blue-900 font-semibold cursor-pointer"
@@ -699,7 +699,7 @@ export default function Home() {
                     </div>
                   </div>
                 ))}
-                <Link href="/leaderboard">
+                <Link href="/zebricek">
                   <Button
                     variant="outline"
                     className="w-full border border-gray-300 hover:border-travel-500 hover:text-travel-600 font-semibold"
@@ -713,7 +713,7 @@ export default function Home() {
       {/* Flights */}
       {/* <div className="space-y-4">
               <FlightsWidget origin="PRG" limit={6} showTitle={true} />
-              <Link href="/flights">
+              <Link href="/letenky">
                 <Button
                   variant="outline"
                   className="w-full border border-gray-300 hover:border-travel-500 hover:text-travel-600 font-semibold"
@@ -805,7 +805,7 @@ export default function Home() {
                   Zaregistrovat se zdarma
                 </Button>
               </Link>
-              <Link href="/auth/login">
+              <Link href="/prihlaseni">
                 <Button
                   variant="outline"
                   className="border border-white text-white hover:bg-white/10 px-8 py-4 text-lg font-bold"

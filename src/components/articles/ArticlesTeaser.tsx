@@ -10,7 +10,7 @@ type Props = {
 
 export default function ArticlesTeaser({
   title = "Nejnovější články",
-  href = "/community",
+  href = "/komunita",
 }: Props) {
   return (
     <div className="space-y-4">

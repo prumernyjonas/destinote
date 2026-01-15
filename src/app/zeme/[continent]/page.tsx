@@ -70,7 +70,7 @@ export default async function ContinentPage({
       </div>
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <ArticlesTeaser title="Tipy a články z regionu" href="/community" />
+          <ArticlesTeaser title="Tipy a články z regionu" href="/komunita" />
         </div>
         <div>
           <FlightsWidget query={continentLabel} />

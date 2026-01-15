@@ -40,31 +40,86 @@ body {
 
 /* MapLibre/MapTiler: zvětšené zavírací tlačítko v popupu */
 .maplibregl-popup .maplibregl-popup-close-button,
-.maptiler-popup .maptiler-popup-close-button {
-  top: 6px !important;
+.maptiler-popup .maptiler-popup-close-button,
+.maplibregl-popup-close-button,
+.maptiler-popup-close-button {
+  top: 8px !important;
   right: 8px !important;
-  width: 32px !important;
-  height: 32px !important;
+  left: auto !important;
+  bottom: auto !important;
+  width: 28px !important;
+  height: 28px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   padding: 0 !important;
   margin: 0 !important;
   font-size: 20px !important;
-  line-height: 32px !important;
-  color: #111827 !important;
-  background: #fff !important;
+  line-height: 28px !important;
+  color: #374151 !important;
+  background: #ffffff !important;
   border: 1px solid #e5e7eb !important;
-  border-radius: 8px !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
   text-align: center !important;
-  position: relative !important;
+  position: absolute !important;
+  cursor: pointer !important;
+  z-index: 10 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Lepší centrování X symbolu - odstranění defaultního obsahu */
+.maplibregl-popup .maplibregl-popup-close-button > *,
+.maptiler-popup .maptiler-popup-close-button > * {
+  display: none !important;
+}
+
+/* Vlastní X symbol s perfektním centrováním */
+.maplibregl-popup .maplibregl-popup-close-button::after,
+.maptiler-popup .maptiler-popup-close-button::after,
+.maplibregl-popup-close-button::after,
+.maptiler-popup-close-button::after {
+  content: "×" !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  color: inherit !important;
+  font-weight: 400 !important;
+  font-family: Arial, sans-serif !important;
 }
 
 .maplibregl-popup .maplibregl-popup-close-button:hover,
-.maptiler-popup .maptiler-popup-close-button:hover {
-  color: #000000 !important;
+.maptiler-popup .maptiler-popup-close-button:hover,
+.maplibregl-popup-close-button:hover,
+.maptiler-popup-close-button:hover {
+  color: #111827 !important;
   background: #f9fafb !important;
+  border-color: #d1d5db !important;
+}
+
+.maplibregl-popup .maplibregl-popup-close-button:active,
+.maptiler-popup .maptiler-popup-close-button:active,
+.maplibregl-popup-close-button:active,
+.maptiler-popup-close-button:active {
+  background: #f3f4f6 !important;
+  transform: scale(0.95) !important;
+}
+
+/* Odstranění defaultního obsahu a použití vlastního X */
+.maplibregl-popup .maplibregl-popup-close-button,
+.maptiler-popup .maptiler-popup-close-button,
+.maplibregl-popup-close-button,
+.maptiler-popup-close-button {
+  font-family: Arial, sans-serif !important;
+}
+
+.maplibregl-popup .maplibregl-popup-close-button > *,
+.maptiler-popup .maptiler-popup-close-button > * {
+  display: none !important;
 }
 
 /* Floating animation for globe */

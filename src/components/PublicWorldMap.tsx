@@ -347,7 +347,7 @@ export default function PublicWorldMap({
               <div style="font-weight:700;font-size:16px">${safeName}</div>
             </div>
             <a href="${url}" style="display:block;color:#16a34a;font-weight:700;text-decoration:none;margin:8px 0">ZOBRAZIT DETAIL ZEMĚ ▸</a>
-            <a href="/community" style="display:block;color:#16a34a;font-weight:700;text-decoration:none">CESTOPISY A REPORTÁŽE ▸</a>
+            <a href="/komunita" style="display:block;color:#16a34a;font-weight:700;text-decoration:none">CESTOPISY A REPORTÁŽE ▸</a>
           </div>`;
         popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
       };

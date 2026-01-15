@@ -350,7 +350,7 @@ export default function ProfilePage({
               Profil neexistuje nebo byl odstraněn.
             </p>
             <button
-              onClick={() => router.push("/community")}
+              onClick={() => router.push("/komunita")}
               className="text-emerald-600 hover:text-emerald-700 font-medium cursor-pointer"
             >
               ← Zpět na komunitu

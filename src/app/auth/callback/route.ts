@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
       if (error) {
         return NextResponse.redirect(
           new URL(
-            `/auth/login?error=${encodeURIComponent(error.message)}`,
+            `/prihlaseni?error=${encodeURIComponent(error.message)}`,
             baseUrl
           )
         );
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
             // Místo vyhození chyby přesměrujeme na login stránku s chybovou zprávou
             return NextResponse.redirect(
               new URL(
-                `/auth/login?error=${encodeURIComponent(
+                `/prihlaseni?error=${encodeURIComponent(
                   "Nickname není v user_metadata. Zkontrolujte, zda se metadata správně ukládají při registraci."
                 )}`,
                 baseUrl
@@ -192,7 +192,7 @@ export async function GET(req: NextRequest) {
           console.error("Chyba při načítání uživatele z DB:", userDataError);
           return NextResponse.redirect(
             new URL(
-              `/auth/login?error=${encodeURIComponent(
+              `/prihlaseni?error=${encodeURIComponent(
                 "Chyba při načítání uživatelského profilu. Zkuste se znovu přihlásit."
               )}`,
               baseUrl
@@ -211,7 +211,7 @@ export async function GET(req: NextRequest) {
   } catch (err: any) {
     return NextResponse.redirect(
       new URL(
-        `/auth/login?error=${encodeURIComponent(
+        `/prihlaseni?error=${encodeURIComponent(
           err?.message || "OAuth chyba"
         )}`,
         baseUrl

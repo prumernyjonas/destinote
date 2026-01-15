@@ -257,7 +257,7 @@ export default function NewArticlePage() {
         }
       );
 
-      // Připravit payload - destination_id musí být buď validní UUID nebo null
+      // Připravit payload - destination je textový název země
       const payload: any = {
         title,
         summary: summary || null,
@@ -265,28 +265,20 @@ export default function NewArticlePage() {
         ...coverPayload,
       };
       
-      // Validace destination_id - musí být validní UUID nebo null
-      // UUID formát: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      
+      // Získat název země pro uložení do textového pole destination
       if (selectedCountryId && selectedCountryId.trim() !== "") {
         const trimmedId = selectedCountryId.trim();
-        // Zkontrolovat, zda je to validní UUID
-        if (uuidRegex.test(trimmedId)) {
-          // Zkontrolovat, zda země existuje v načteném seznamu
-          const countryExists = countries.some(c => c.id === trimmedId);
-          if (countryExists) {
-            payload.destination_id = trimmedId;
-          } else {
-            console.warn("[new-article] Selected country ID not found in countries list:", trimmedId);
-            payload.destination_id = null;
-          }
+        // Zkontrolovat, zda země existuje v načteném seznamu
+        const selectedCountry = countries.find(c => c.id === trimmedId);
+        if (selectedCountry) {
+          // Přidat textový název země pro uložení do pole destination
+          payload.destination = selectedCountry.name;
         } else {
-          console.warn("[new-article] Invalid UUID format for destination_id:", trimmedId);
-          payload.destination_id = null;
+          console.warn("[new-article] Selected country ID not found in countries list:", trimmedId);
+          payload.destination = null;
         }
       } else {
-        payload.destination_id = null;
+        payload.destination = null;
       }
 
       console.log("[new-article] Sending request to /api/articles with payload:", {
@@ -294,8 +286,8 @@ export default function NewArticlePage() {
         hasContent: !!payload.content,
         hasSummary: !!payload.summary,
         hasCover: !!payload.main_image_url,
-        hasDestination: !!payload.destination_id,
-        destinationId: payload.destination_id,
+        hasDestination: !!payload.destination,
+        destination: payload.destination,
       });
 
       const res = await fetch("/api/articles", {
@@ -397,7 +389,7 @@ export default function NewArticlePage() {
         }
       } else {
         // Pokud jen ukládáme jako koncept, přesměrujeme normálně
-        router.push("/community");
+        router.push("/komunita");
       }
     } catch (err: any) {
       console.error("[new-article] submit error:", err?.message, err);
@@ -405,8 +397,15 @@ export default function NewArticlePage() {
       if (showSubmissionAnimation) {
         setShowSubmissionAnimation(false);
       }
+      // Vždy zrušit loading při chybě
+      if (submitForApproval) {
+        setSubmitting(false);
+      } else {
+        setSaving(false);
+      }
       setError(err.message || "Neznámá chyba");
     } finally {
+      // Zajistit, že loading je vždy zrušen (pokud nebyl už zrušen v catch)
       if (submitForApproval) {
         // submitting se nastaví na false až po přesměrování nebo chybě
         // pokud je animace zobrazená a úspěšná, submitting zůstane true až do přesměrování
@@ -446,10 +445,10 @@ export default function NewArticlePage() {
               Přihlaste se prosím, abyste mohli vytvořit nový článek.
             </p>
             <div className="flex justify-center gap-3 pt-4">
-              <Link href="/auth/login?redirect=/clanek/novy">
+              <Link href="/prihlaseni?redirect=/clanek/novy">
                 <Button>Přihlásit se</Button>
               </Link>
-              <Link href="/auth/register?redirect=/clanek/novy">
+              <Link href="/registrace?redirect=/clanek/novy">
                 <Button variant="outline">Registrovat se</Button>
               </Link>
             </div>

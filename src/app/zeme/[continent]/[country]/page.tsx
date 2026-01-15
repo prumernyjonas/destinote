@@ -177,7 +177,7 @@ export default async function CountryDetailPage({
       {/* Další sekce - články a letenky */}
       <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <ArticlesTeaser title="Cestopisy a články" href="/community" />
+          <ArticlesTeaser title="Cestopisy a články" href="/komunita" />
         </div>
         <div>
           <FlightsWidget query={displayName} />

@@ -12,6 +12,40 @@ function slugify(input: string): string {
     .replace(/(^-|-$)+/g, "");
 }
 
+/**
+ * Generuje unikátní slug pro článek
+ * Pokud slug už existuje, přidá číslo na konec (např. "nazev-clanku-2")
+ */
+async function generateUniqueSlug(
+  admin: ReturnType<typeof createAdminSupabaseClient>,
+  baseSlug: string
+): Promise<string> {
+  let slug = baseSlug;
+  let counter = 1;
+  const maxAttempts = 100; // Bezpečnostní limit
+
+  while (counter < maxAttempts) {
+    // Zkontrolovat, zda slug už existuje
+    const { data: existing } = await admin
+      .from("articles")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (!existing) {
+      // Slug je volný
+      return slug;
+    }
+
+    // Slug existuje, zkusit s číslem
+    counter++;
+    slug = `${baseSlug}-${counter}`;
+  }
+
+  // Pokud jsme dosáhli limitu, použít timestamp jako fallback
+  return `${baseSlug}-${Date.now()}`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
@@ -48,7 +82,7 @@ export async function POST(req: NextRequest) {
       title,
       summary,
       content,
-      destination_id,
+      destination, // textový název země
       main_image_url,
       main_image_public_id,
       main_image_width,
@@ -59,7 +93,7 @@ export async function POST(req: NextRequest) {
       hasTitle: !!title,
       hasContent: !!content,
       hasSummary: !!summary,
-      hasDest: !!destination_id,
+      hasDest: !!destination,
       hasCover: !!main_image_url,
     });
     if (!title || !content) {
@@ -70,57 +104,33 @@ export async function POST(req: NextRequest) {
     }
     const admin = createAdminSupabaseClient();
     
-    // Validace destination_id - pokud je poskytnut, musí existovat v databázi
-    let validatedDestinationId: string | null = null;
-    if (destination_id && typeof destination_id === "string" && destination_id.trim() !== "") {
-      const trimmedId = destination_id.trim();
-      // Zkontrolovat, zda je to validní UUID
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (uuidRegex.test(trimmedId)) {
-        // Zkontrolovat, zda země existuje v databázi
-        const { data: countryData, error: countryError } = await admin
-          .from("countries")
-          .select("id")
-          .eq("id", trimmedId)
-          .maybeSingle();
-        
-        if (countryError) {
-          console.error("[articles.POST] Error checking country:", countryError);
-          return new Response(
-            JSON.stringify({ error: "Chyba při ověřování země" }),
-            { status: 500 }
-          );
-        }
-        
-        if (countryData) {
-          validatedDestinationId = trimmedId;
-        } else {
-          console.warn("[articles.POST] Country not found:", trimmedId);
-          return new Response(
-            JSON.stringify({ error: "Vybraná země neexistuje v databázi" }),
-            { status: 400 }
-          );
-        }
-      } else {
-        console.warn("[articles.POST] Invalid UUID format for destination_id:", trimmedId);
-        return new Response(
-          JSON.stringify({ error: "Neplatný formát ID země" }),
-          { status: 400 }
-        );
-      }
+    // Získat název země pro uložení do textového pole destination
+    let destinationName: string | null = null;
+    
+    // Pokud je poskytnut destination (textový název), použijeme ho
+    if (destination && typeof destination === "string" && destination.trim() !== "") {
+      destinationName = destination.trim();
     }
     
     const baseSlug = slugify(title);
+    
+    // Generovat unikátní slug
+    const uniqueSlug = await generateUniqueSlug(admin, baseSlug);
+    console.log("[articles.POST] generated slug:", uniqueSlug, "from base:", baseSlug);
 
-    const toInsert = {
+    const toInsert: any = {
       author_id: userId,
-      destination_id: validatedDestinationId,
       title,
-      slug: baseSlug,
+      slug: uniqueSlug,
       summary: summary ?? null,
       content,
       status: "draft",
     };
+    
+    // Přidat destination (textový název země) pokud je k dispozici
+    if (destinationName) {
+      toInsert.destination = destinationName;
+    }
     // pokud dorazila cover metadata, vložíme je rovnou
     if (main_image_url) (toInsert as any).main_image_url = main_image_url;
     if (main_image_public_id)
@@ -140,10 +150,45 @@ export async function POST(req: NextRequest) {
       .select("id, slug")
       .single();
     if (error) {
-      console.error("[articles.POST] insert error:", error.message);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
-      });
+      console.error("[articles.POST] insert error:", error.message, error);
+      
+      // Speciální handling pro duplicitní slug (i když by to nemělo nastat díky generateUniqueSlug)
+      if (error.message?.includes("articles_slug_key") || error.code === "23505") {
+        // Pokud přesto dojde k duplicitě, zkusit znovu s jiným slugem
+        console.warn("[articles.POST] Duplicate slug detected, retrying with timestamp");
+        const fallbackSlug = `${baseSlug}-${Date.now()}`;
+        const retryInsert = { ...toInsert, slug: fallbackSlug };
+        const { data: retryData, error: retryError } = await admin
+          .from("articles")
+          .insert(retryInsert)
+          .select("id, slug")
+          .single();
+        
+        if (retryError) {
+          console.error("[articles.POST] retry insert error:", retryError.message);
+          return new Response(
+            JSON.stringify({
+              error: "Nepodařilo se vytvořit článek. Zkuste změnit název článku.",
+            }),
+            { status: 500 }
+          );
+        }
+        
+        return new Response(
+          JSON.stringify({ id: retryData.id, slug: retryData.slug }),
+          {
+            status: 201,
+            headers: { "content-type": "application/json" },
+          }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({
+          error: error.message || "Chyba při vytváření článku",
+        }),
+        { status: 500 }
+      );
     }
     console.log("[articles.POST] created:", { id: data.id, slug: data.slug });
     return new Response(JSON.stringify({ id: data.id, slug: data.slug }), {
@@ -151,11 +196,21 @@ export async function POST(req: NextRequest) {
       headers: { "content-type": "application/json" },
     });
   } catch (err: any) {
+    console.error("[articles.POST] handler error:", err?.message, err);
+    
+    // Kontrola, zda není problém s JSON parsingem
+    if (err instanceof SyntaxError) {
+      return new Response(
+        JSON.stringify({ error: "Chyba při zpracování požadavku" }),
+        { status: 400 }
+      );
+    }
+    
     const message =
       err?.message === "UNAUTHORIZED" ? "Unauthorized" : "Internal error";
-    console.error("[articles.POST] handler error:", err?.message, err);
     return new Response(JSON.stringify({ error: message }), {
       status: message === "Unauthorized" ? 401 : 500,
+      headers: { "content-type": "application/json" },
     });
   }
 }
@@ -257,7 +312,7 @@ export async function GET(req: NextRequest) {
       const { data, error } = await admin
         .from("articles")
         .select(
-          "id, title, status, created_at, updated_at, published_at, main_image_url, main_image_alt, slug, author_id"
+          "id, title, status, created_at, updated_at, published_at, main_image_url, main_image_alt, slug, author_id, destination"
         )
         .eq("status", "approved")
         .in("author_id", followingIds)
@@ -319,7 +374,7 @@ export async function GET(req: NextRequest) {
       const { data, error } = await admin
         .from("articles")
         .select(
-          "id, title, status, created_at, updated_at, published_at, main_image_url, main_image_alt, slug, author_id"
+          "id, title, status, created_at, updated_at, published_at, main_image_url, main_image_alt, slug, author_id, destination"
         )
         .eq("status", "approved")
         .in("author_id", friendIds)
@@ -344,7 +399,7 @@ export async function GET(req: NextRequest) {
       const { data, error } = await admin
         .from("articles")
         .select(
-          "id, title, status, created_at, updated_at, published_at, main_image_url, main_image_alt, slug"
+          "id, title, status, created_at, updated_at, published_at, main_image_url, main_image_alt, slug, destination"
         )
         .eq("author_id", authorId)
         .eq("status", "approved")
@@ -368,7 +423,7 @@ export async function GET(req: NextRequest) {
     const { data, error } = await admin
       .from("articles")
       .select(
-        "id, title, status, created_at, updated_at, published_at, main_image_url, main_image_alt, slug"
+        "id, title, status, created_at, updated_at, published_at, main_image_url, main_image_alt, slug, destination"
       )
       .eq("status", "approved")
       .order("published_at", { ascending: false })

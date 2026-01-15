@@ -110,7 +110,7 @@ export default function RegisterPage() {
       ) {
         setLocalError(null);
         // Okamžitě přesměruj na login stránku
-        router.push("/auth/login?message=email-confirmation");
+        router.push("/prihlaseni?message=email-confirmation");
       } else {
         toast.error(errorMessage);
         setLocalError(errorMessage);
@@ -179,7 +179,7 @@ export default function RegisterPage() {
           <p className="mt-2 text-sm text-gray-600">
             Nebo{" "}
             <Link
-              href="/auth/login"
+              href="/prihlaseni"
               className="font-medium text-green-600 hover:text-green-500"
             >
               se přihlaste do existujícího účtu

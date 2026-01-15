@@ -92,7 +92,7 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-gray-600">
             Nebo{" "}
             <Link
-              href="/auth/register"
+              href="/registrace"
               className="font-medium text-green-600 hover:text-green-500"
             >
               si vytvořte nový účet

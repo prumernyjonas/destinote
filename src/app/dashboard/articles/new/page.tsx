@@ -53,8 +53,8 @@ export default function NewArticlePage() {
       if (!session?.access_token) {
         setSaving(false);
         // volitelně můžeš přidat redirect back param
-        // např. `/auth/login?redirect=/dashboard/articles/new`
-        router.push("/auth/login");
+        // např. `/prihlaseni?redirect=/dashboard/articles/new`
+        router.push("/prihlaseni");
         return;
       }
       const headers: HeadersInit = {

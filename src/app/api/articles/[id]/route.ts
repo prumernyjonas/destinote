@@ -186,7 +186,7 @@ export async function PUT(
 
     const body = await req.json().catch(() => ({}));
     const allowed: any = {};
-    for (const key of ["title", "summary", "content", "destination_id"]) {
+    for (const key of ["title", "summary", "content", "destination"]) {
       if (key in body) allowed[key] = body[key];
     }
     if ("title" in body) {

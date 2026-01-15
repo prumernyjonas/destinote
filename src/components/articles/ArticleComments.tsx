@@ -284,7 +284,7 @@ export default function ArticleComments({
         </div>
         {!authLoading && !user ? (
           <Link
-            href={`/auth/login?redirect=/clanek/${articleSlug}`}
+            href={`/prihlaseni?redirect=/clanek/${articleSlug}`}
             className="text-sm text-green-700 font-medium hover:text-green-900"
           >
             Přihlásit se pro komentář

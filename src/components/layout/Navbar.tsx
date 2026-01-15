@@ -117,7 +117,7 @@ export default function Navbar() {
     };
   }, [mobileMenuOpen]);
 
-  const isCommunity = pathname === "/community";
+  const isCommunity = pathname === "/komunita";
   const isCountries = pathname === "/zeme" || pathname.startsWith("/zeme/");
   const navItems = [
     { label: "Home", href: "/", active: pathname === "/" },
@@ -125,14 +125,14 @@ export default function Navbar() {
     // Komunita je nyní samostatná stránka
     {
       label: "Komunita",
-      href: "/community",
+      href: "/komunita",
       active: isCommunity,
     },
-    { label: "Letenky", href: "/flights", active: pathname === "/flights" },
+    { label: "Letenky", href: "/letenky", active: pathname === "/letenky" },
     {
       label: "Žebříček",
-      href: "/leaderboard",
-      active: pathname === "/leaderboard",
+      href: "/zebricek",
+      active: pathname === "/zebricek",
     },
   ];
 
@@ -319,7 +319,7 @@ export default function Navbar() {
               </div>
 
               <Link
-                href="/community"
+                href="/komunita"
                 className={`px-3 py-1.5 rounded-full transition ${
                   isCommunity ? "bg-white/60" : "hover:bg-white/60"
                 } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
@@ -328,16 +328,16 @@ export default function Navbar() {
               </Link>
 
               <Link
-                href="/flights"
+                href="/letenky"
                 className={`px-3 py-1.5 rounded-full transition ${
-                  pathname === "/flights" ? "bg-white/60" : "hover:bg-white/60"
+                    pathname === "/letenky" ? "bg-white/60" : "hover:bg-white/60"
                 } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
               >
                 Letenky
               </Link>
 
               <Link
-                href="/leaderboard"
+                href="/zebricek"
                 className={`px-3 py-1.5 rounded-full transition ${
                   pathname === "/leaderboard"
                     ? "bg-white/60"
@@ -455,7 +455,7 @@ export default function Navbar() {
                               } finally {
                                 setMenuOpen(false);
                                 setLoggingOut(false);
-                                router.replace("/auth/login");
+                                router.replace("/prihlaseni");
                                 router.refresh();
                               }
                             }}
@@ -475,7 +475,7 @@ export default function Navbar() {
                   <div style={{ width: 96, height: 36 }} />
                 ) : (
                   <button
-                    onClick={() => router.push("/auth/login")}
+                    onClick={() => router.push("/prihlaseni")}
                     className="px-5 py-2.5 rounded-full bg-green-700 text-white cursor-pointer text-base hover:bg-green-800 active:bg-green-900 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
                   >
                     Přihlásit se
@@ -606,7 +606,7 @@ export default function Navbar() {
                 </div>
 
                 <Link
-                  href="/community"
+                  href="/komunita"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition ${
                     isCommunity ? "bg-white/60 font-semibold" : ""
@@ -617,7 +617,7 @@ export default function Navbar() {
                 </Link>
 
                 <Link
-                  href="/flights"
+                  href="/letenky"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition ${
                     pathname === "/flights" ? "bg-white/60 font-semibold" : ""
@@ -628,10 +628,10 @@ export default function Navbar() {
                 </Link>
 
                 <Link
-                  href="/leaderboard"
+                  href="/zebricek"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition ${
-                    pathname === "/leaderboard"
+                    pathname === "/zebricek"
                       ? "bg-white/60 font-semibold"
                       : ""
                   }`}
@@ -723,7 +723,7 @@ export default function Navbar() {
                           setMobileUserMenuOpen(false);
                         } finally {
                           setLoggingOut(false);
-                          router.replace("/auth/login");
+                          router.replace("/prihlaseni");
                           router.refresh();
                         }
                       }}
@@ -743,7 +743,7 @@ export default function Navbar() {
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    router.push("/auth/login");
+                    router.push("/prihlaseni");
                   }}
                   className="w-full px-6 py-3 rounded-full bg-green-700 text-white text-base hover:bg-green-800 active:bg-green-900 transition"
                 >
