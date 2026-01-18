@@ -59,6 +59,10 @@ export default function EditArticlePage() {
   const [coverUrl, setCoverUrl] = React.useState<string | null>(null);
   const [coverAlt, setCoverAlt] = React.useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = React.useState<string | null>(null);
+  const [coverFile, setCoverFile] = React.useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = React.useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = React.useState(false);
+  const [coverMarkedForDelete, setCoverMarkedForDelete] = React.useState(false);
 
   // Načítání článku - jednoduchý přístup
   React.useEffect(() => {
@@ -129,6 +133,7 @@ export default function EditArticlePage() {
           setCoverUrl(data.main_image_url || null);
           setCoverAlt(data.main_image_alt || null);
           setCurrentStatus(data.status || null);
+          setCoverMarkedForDelete(false);
           setLoading(false);
           return;
         }
@@ -191,6 +196,7 @@ export default function EditArticlePage() {
         setCoverUrl(data.main_image_url || null);
         setCoverAlt(data.main_image_alt || null);
         setCurrentStatus(data.status || null);
+        setCoverMarkedForDelete(false);
         setLoading(false);
       } catch (err: any) {
         dbg("[load] error", err);
@@ -207,6 +213,33 @@ export default function EditArticlePage() {
       cancelled = true;
     };
   }, [id, authLoading, user?.uid]);
+
+  // Preview pro nový obrázek
+  React.useEffect(() => {
+    if (!coverFile) {
+      setCoverPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(coverFile);
+    setCoverPreview(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [coverFile]);
+
+  // Preview se vytvoří automaticky, ale nahrání proběhne až při uložení změn
+
+  function handleCoverDelete() {
+    // Jen označit obrázek k smazání, skutečné smazání proběhne při uložení
+    setCoverMarkedForDelete(true);
+    setCoverFile(null);
+    setCoverPreview(null);
+  }
+
+  function handleCoverDeleteCancel() {
+    // Zrušit označení k smazání
+    setCoverMarkedForDelete(false);
+  }
 
   async function saveDraft(e: React.FormEvent) {
     e.preventDefault();
@@ -240,6 +273,87 @@ export default function EditArticlePage() {
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
       if (user?.uid) headers["x-user-id"] = user.uid;
+
+      // Pokud je nový obrázek vybrán, nahrajeme ho
+      if (coverFile) {
+        setUploadingCover(true);
+        try {
+          // Nahrát obrázek na Cloudinary
+          const form = new FormData();
+          form.append("file", coverFile);
+          form.append("folder", "destinote_articles");
+
+          const uploadRes = await fetch("/api/images/upload", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: form,
+          });
+
+          if (!uploadRes.ok) {
+            const errorData = await uploadRes.json().catch(() => ({}));
+            throw new Error(errorData.error || "Nahrání obrázku selhalo");
+          }
+
+          const uploadData = await uploadRes.json();
+          const { url, public_id, width, height } = uploadData;
+
+          // Uložit metadata do článku
+          const coverRes = await fetch(`/api/articles/${encodeURIComponent(id)}/cover`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              url,
+              public_id,
+              width: width || null,
+              height: height || null,
+              alt: coverAlt || null,
+            }),
+          });
+
+          if (!coverRes.ok) {
+            const errorData = await coverRes.json().catch(() => ({}));
+            throw new Error(errorData.error || "Uložení obrázku selhalo");
+          }
+
+          // Aktualizovat lokální stav
+          setCoverUrl(url);
+          setCoverFile(null);
+          setCoverPreview(null);
+          setCoverMarkedForDelete(false);
+        } catch (uploadError: any) {
+          setUploadingCover(false);
+          throw uploadError;
+        } finally {
+          setUploadingCover(false);
+        }
+      }
+
+      // Pokud je obrázek označen k smazání, smažeme ho
+      if (coverMarkedForDelete && coverUrl && !coverFile) {
+        const deleteRes = await fetch(`/api/articles/${encodeURIComponent(id)}/cover`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!deleteRes.ok) {
+          const errorData = await deleteRes.json().catch(() => ({}));
+          throw new Error(errorData.error || "Odstranění obrázku selhalo");
+        }
+
+        // Aktualizovat lokální stav
+        setCoverUrl(null);
+        setCoverAlt(null);
+        setCoverFile(null);
+        setCoverPreview(null);
+        setCoverMarkedForDelete(false);
+      }
 
       // Použijeme API endpoint pro konzistenci
       const res = await fetch(`/api/articles/${encodeURIComponent(id)}`, {
@@ -403,17 +517,124 @@ export default function EditArticlePage() {
           {savedMsg}
         </div>
       )}
-      {coverUrl && (
-        <div className="w-full">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={coverUrl}
-            alt={coverAlt || "Cover"}
-            className="w-full max-w-3xl rounded-md border object-cover"
-            style={{ maxHeight: 360 }}
+      {/* Sekce pro správu cover obrázku */}
+      <div className="space-y-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Cover obrázek
+        </label>
+        
+        {/* Zobrazení aktuálního nebo preview obrázku */}
+        {(coverUrl || coverPreview) && !coverMarkedForDelete && (
+          <div className="relative w-full max-w-3xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={coverPreview || coverUrl || ""}
+              alt={coverAlt || "Cover"}
+              className={`w-full rounded-md border object-cover ${
+                coverPreview ? "opacity-75" : ""
+              }`}
+              style={{ maxHeight: 360 }}
+            />
+            {coverPreview && (
+              <div className="mt-2 text-sm text-blue-600 font-medium">
+                Náhled nového obrázku (bude nahrán po uložení změn)
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Zpráva, že obrázek je označen k smazání */}
+        {coverMarkedForDelete && coverUrl && !coverFile && (
+          <div className="rounded-md border border-yellow-200 bg-yellow-50 text-yellow-800 px-4 py-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span>Obrázek bude smazán po uložení změn</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCoverDeleteCancel}
+              >
+                Zrušit
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Input pro alt text */}
+        <div>
+          <input
+            type="text"
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 px-3 py-2"
+            value={coverAlt || ""}
+            onChange={(e) => setCoverAlt(e.target.value)}
+            placeholder="Alt text (popis obrázku)"
           />
         </div>
-      )}
+
+        {/* Tlačítka pro správu obrázku */}
+        <div className="flex gap-3">
+          <label className="cursor-pointer">
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null;
+                if (file) {
+                  setCoverFile(file);
+                }
+              }}
+              disabled={uploadingCover}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={uploadingCover || saving}
+              onClick={(e) => {
+                e.preventDefault();
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/*";
+                input.onchange = (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0] || null;
+                  if (file) {
+                    setCoverFile(file);
+                    setCoverMarkedForDelete(false); // Zrušit smazání, pokud je nový obrázek vybrán
+                  }
+                };
+                input.click();
+              }}
+            >
+              {coverFile ? "Změnit výběr" : coverUrl ? "Nahradit obrázek" : "Nahrát obrázek"}
+            </Button>
+          </label>
+          
+          {coverUrl && !coverFile && !coverMarkedForDelete && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCoverDelete}
+              disabled={uploadingCover || saving}
+            >
+              Odstranit obrázek
+            </Button>
+          )}
+          
+          {coverFile && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setCoverFile(null);
+                setCoverPreview(null);
+              }}
+              disabled={uploadingCover || saving}
+            >
+              Zrušit výběr
+            </Button>
+          )}
+        </div>
+      </div>
       <form
         onSubmit={(e) => {
           e.preventDefault();

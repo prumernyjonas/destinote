@@ -715,15 +715,17 @@ export default function ProfilePage({
                           className="flex items-center gap-4 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
                         >
                           {article.main_image_url ? (
-                            <Image
-                              src={article.main_image_url}
-                              alt={article.main_image_alt || article.title}
-                              width={80}
-                              height={60}
-                              className="rounded object-cover"
-                            />
+                            <div className="w-20 h-[60px] flex-shrink-0 rounded overflow-hidden bg-gray-200">
+                              <Image
+                                src={article.main_image_url}
+                                alt={article.main_image_alt || article.title}
+                                width={80}
+                                height={60}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
                           ) : (
-                            <div className="w-20 h-15 bg-gray-200 rounded flex items-center justify-center">
+                            <div className="w-20 h-[60px] flex-shrink-0 bg-gray-200 rounded flex items-center justify-center">
                               <FiFileText className="w-8 h-8 text-gray-400" />
                             </div>
                           )}
