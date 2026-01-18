@@ -120,7 +120,7 @@ export default function Navbar() {
   const isCommunity = pathname === "/komunita";
   const isCountries = pathname === "/zeme" || pathname.startsWith("/zeme/");
   const navItems = [
-    { label: "Home", href: "/", active: pathname === "/" },
+    { label: "Domů", href: "/", active: pathname === "/" },
     { label: "Země", href: "/zeme", active: isCountries },
     // Komunita je nyní samostatná stránka
     {
@@ -234,10 +234,10 @@ export default function Navbar() {
             <div className="flex items-center space-x-3">
               <Link href="/" className="flex items-center space-x-2">
                 <Image
-                  src="/logo.svg"
+                  src="/logo.png"
                   alt="Destinote"
-                  width={140}
-                  height={36}
+                  width={120}
+                  height={26}
                   priority
                   className="h-8 w-auto md:h-9"
                 />
@@ -256,7 +256,7 @@ export default function Navbar() {
                   pathname === "/" ? "bg-white/60" : "hover:bg-white/60"
                 } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
               >
-                Home
+                Domů
               </Link>
 
               <div className="relative" ref={countriesRef}>
@@ -330,7 +330,7 @@ export default function Navbar() {
               <Link
                 href="/letenky"
                 className={`px-3 py-1.5 rounded-full transition ${
-                    pathname === "/letenky" ? "bg-white/60" : "hover:bg-white/60"
+                  pathname === "/letenky" ? "bg-white/60" : "hover:bg-white/60"
                 } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
               >
                 Letenky
@@ -502,7 +502,7 @@ export default function Navbar() {
             <div className="flex items-center justify-between px-6 py-5 border-b border-blue-200 bg-[#cbe1f7]">
               <div className="flex items-center space-x-2">
                 <Image
-                  src="/logo.svg"
+                  src="/logo.png"
                   alt="Destinote"
                   width={140}
                   height={36}
@@ -631,9 +631,7 @@ export default function Navbar() {
                   href="/zebricek"
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition ${
-                    pathname === "/zebricek"
-                      ? "bg-white/60 font-semibold"
-                      : ""
+                    pathname === "/zebricek" ? "bg-white/60 font-semibold" : ""
                   }`}
                 >
                   <FiAward className="w-5 h-5" />
@@ -683,7 +681,7 @@ export default function Navbar() {
                         setMobileMenuOpen(false);
                         setMobileUserMenuOpen(false);
                         router.push(
-                          `/profil/${user?.nicknameSlug || user?.uid}`
+                          `/profil/${user?.nicknameSlug || user?.uid}`,
                         );
                       }}
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"

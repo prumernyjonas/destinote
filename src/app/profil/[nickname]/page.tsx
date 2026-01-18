@@ -707,8 +707,10 @@ export default function ProfilePage({
                           key={article.id}
                           href={
                             article.status === "draft"
-                              ? `/clanek/${article.slug}/upravit`
-                              : `/clanek/${article.slug}`
+                              ? `/dashboard/articles/${article.id}/edit`
+                              : article.slug
+                              ? `/clanek/${article.slug}`
+                              : `/dashboard/articles/${article.id}/edit`
                           }
                           className="flex items-center gap-4 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
                         >

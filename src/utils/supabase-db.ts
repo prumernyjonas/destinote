@@ -19,11 +19,11 @@ export const dbUtils = {
     const followersCount = followersRes.count ?? 0;
     const followingCount = followingRes.count ?? 0;
 
-    // Zkusit načíst ostatní statistiky z user_stats view (pokud existuje)
+    // Načíst ostatní statistiky z user_stats view (pokud existuje)
     const { data } = await supabase
       .from("user_stats")
       .select(
-        "countriesVisited, continentsVisited, articlesWritten, badgesEarned, level"
+        "countriesVisited, continentsVisited, articlesWritten, badgesEarned, level",
       )
       .eq("id", uid)
       .maybeSingle();
@@ -41,11 +41,10 @@ export const dbUtils = {
 
   async getArticles(countryId?: string): Promise<Article[]> {
     // Přizpůsobeno skutečnému schématu v Supabase (snake_case sloupce).
-    // Volitelné sloupce, které v našem UI nemáme, doplníme rozumnými defaulty.
     let query = supabase
       .from("articles")
       .select(
-        "id, title, content, destination_id, author_id, status, created_at, updated_at, likes_count, comments_count"
+        "id, title, content, destination_id, author_id, status, created_at, updated_at, likes_count, comments_count",
       )
       .order("created_at", { ascending: false })
       .limit(50);
@@ -73,8 +72,7 @@ export const dbUtils = {
   },
 
   async getBadges(uid: string): Promise<Badge[]> {
-    // Dočasně vypnuto: chybějící tabulky v Supabase způsobovaly 400 Bad Request.
-    // Vracíme prázdný seznam, UI zobrazí žádné odznaky bez chyb.
+    // Dodelat
     return [];
   },
 
@@ -182,7 +180,7 @@ export const dbUtils = {
         country_id: countryId,
         visited_at: new Date().toISOString(),
       },
-      { onConflict: "user_id,country_id" }
+      { onConflict: "user_id,country_id" },
     );
     if (error) {
       throw new Error(error.message);
@@ -191,7 +189,7 @@ export const dbUtils = {
 
   // Načtení navštívených zemí uživatele jako seznam ISO2 + názvů
   async getVisitedCountries(
-    userId: string
+    userId: string,
   ): Promise<Array<{ iso2: string; name: string; id: string }>> {
     // Preferuj serverové API (admin klient) kvůli možným RLS omezením
     try {
@@ -204,7 +202,7 @@ export const dbUtils = {
             "x-user-id": userId,
           },
           cache: "no-store",
-        }
+        },
       );
       if (!res.ok) {
         let message = `GET /api/visited ${res.status}`;
@@ -289,7 +287,7 @@ export const dbUtils = {
   // === Sledování uživatelů ===
 
   async getFollowCounts(
-    userId: string
+    userId: string,
   ): Promise<{ followers: number; following: number }> {
     const [followersRes, followingRes] = await Promise.all([
       supabase
@@ -310,7 +308,7 @@ export const dbUtils = {
 
   async isFollowing(
     currentUserId: string,
-    targetUserId: string
+    targetUserId: string,
   ): Promise<boolean> {
     const { data } = await supabase
       .from("user_follows")
@@ -331,14 +329,14 @@ export const dbUtils = {
         following_id: targetUserId,
         created_at: new Date().toISOString(),
       },
-      { onConflict: "follower_id,following_id" }
+      { onConflict: "follower_id,following_id" },
     );
     if (error) throw new Error(error.message);
   },
 
   async unfollowUser(
     currentUserId: string,
-    targetUserId: string
+    targetUserId: string,
   ): Promise<void> {
     const { error } = await supabase
       .from("user_follows")

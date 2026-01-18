@@ -388,8 +388,15 @@ export default function NewArticlePage() {
           return;
         }
       } else {
-        // Pokud jen ukládáme jako koncept, přesměrujeme normálně
-        router.push("/komunita");
+        // Pokud jen ukládáme jako koncept, přesměrujeme na profil uživatele s tabem articles
+        setSaving(false); // Resetovat loading před přesměrováním
+        const userNickname = user?.nicknameSlug || user?.nickname || user?.uid;
+        if (userNickname) {
+          router.push(`/profil/${userNickname}?tab=articles`);
+        } else {
+          router.push("/komunita");
+        }
+        return; // Ukončit funkci, aby se finally blok neprovedl
       }
     } catch (err: any) {
       console.error("[new-article] submit error:", err?.message, err);
@@ -405,7 +412,8 @@ export default function NewArticlePage() {
       }
       setError(err.message || "Neznámá chyba");
     } finally {
-      // Zajistit, že loading je vždy zrušen (pokud nebyl už zrušen v catch)
+      // Zajistit, že loading je vždy zrušen (pokud nebyl už zrušen v catch nebo před přesměrováním)
+      // Poznámka: setSaving(false) se může volat vícekrát, což je v pořádku (React state setter je idempotentní)
       if (submitForApproval) {
         // submitting se nastaví na false až po přesměrování nebo chybě
         // pokud je animace zobrazená a úspěšná, submitting zůstane true až do přesměrování
@@ -413,6 +421,8 @@ export default function NewArticlePage() {
           setSubmitting(false);
         }
       } else {
+        // Pro koncept se setSaving(false) volá před přesměrováním, ale finally se vždy provede
+        // Takže to může být voláno dvakrát, což je v pořádku
         setSaving(false);
       }
       console.log("[new-article] submit done");

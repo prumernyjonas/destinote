@@ -11,18 +11,18 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  
+
   /* Travel Blue Color Palette */
-  --color-travel-50: #B9D6F2;
-  --color-travel-100: #B9D6F2;
+  --color-travel-50: #b9d6f2;
+  --color-travel-100: #b9d6f2;
   --color-travel-200: #607899;
-  --color-travel-300: #006DAA;
-  --color-travel-400: #0260A7;
-  --color-travel-500: #0353A4;
+  --color-travel-300: #006daa;
+  --color-travel-400: #0260a7;
+  --color-travel-500: #0353a4;
   --color-travel-600: #053772;
   --color-travel-700: #003559;
-  --color-travel-800: #061A40;
-  --color-travel-900: #061A40;
+  --color-travel-800: #061a40;
+  --color-travel-900: #061a40;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -38,7 +38,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* MapLibre/MapTiler: zvětšené zavírací tlačítko v popupu */
+/* MapLibre/MapTiler: zavírací tlačítko v popupu */
 .maplibregl-popup .maplibregl-popup-close-button,
 .maptiler-popup .maptiler-popup-close-button,
 .maplibregl-popup-close-button,
@@ -145,7 +145,9 @@ body {
 
 /* Globe hover effect - premium quality */
 .globe-hover {
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), filter 0.4s ease;
+  transition:
+    transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    filter 0.4s ease;
   will-change: transform;
 }
 

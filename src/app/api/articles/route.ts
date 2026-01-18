@@ -265,7 +265,7 @@ export async function GET(req: NextRequest) {
       console.log("[articles.GET] Fetching articles for userId:", userId);
       const { data, error } = await admin
         .from("articles")
-        .select("id, title, status, created_at, updated_at")
+        .select("id, title, status, created_at, updated_at, slug, main_image_url, main_image_alt, published_at")
         .eq("author_id", userId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });

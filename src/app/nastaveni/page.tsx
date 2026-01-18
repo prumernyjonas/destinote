@@ -39,8 +39,8 @@ export default function NastaveniPage() {
 
   const currentSlug =
     pathname?.split("/").filter(Boolean)[1] === "nastaveni"
-      ? pathname.split("/").filter(Boolean)[2] ?? ""
-      : pathname?.split("/").filter(Boolean)[1] ?? "";
+      ? (pathname.split("/").filter(Boolean)[2] ?? "")
+      : (pathname?.split("/").filter(Boolean)[1] ?? "");
 
   const derivedActive = slugToId[currentSlug ?? ""] ?? "profile";
   const [active, setActive] = useState(derivedActive);
@@ -60,7 +60,7 @@ export default function NastaveniPage() {
     <main className="min-h-screen bg-[#e6ecef] px-4 py-10">
       <div className="max-w-7xl mx-auto flex gap-8">
         {/* Uzsi leva cast s menu */}
-        <aside className="bg-white rounded-[32px] p-8 flex-shrink-0 w-[300px]">
+        <aside className="bg-white rounded-4xl p-8 shrink-0 w-75">
           <h2 className="text-2xl font-semibold text-slate-900 mb-7">
             Nastavení
           </h2>
