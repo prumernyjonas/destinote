@@ -172,15 +172,23 @@ export default function RegisterPage() {
   }, [formData.nickname]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-screen relative flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      {/* Dark blue background gradient */}
+      <div 
+        className="fixed inset-0 -z-10"
+        style={{
+          background: 'linear-gradient(135deg, rgb(15, 30, 75) 0%, rgb(28, 57, 142) 50%, rgb(20, 40, 100) 100%)',
+        }}
+      />
+      
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">Registrujte se</h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <h2 className="text-2xl font-bold text-white">Registrujte se</h2>
+          <p className="mt-2 text-sm text-white/80">
             Nebo{" "}
             <Link
               href="/prihlaseni"
-              className="font-medium text-green-600 hover:text-green-500"
+              className="font-medium text-green-400 hover:text-green-300"
             >
               se přihlaste do existujícího účtu
             </Link>
@@ -188,8 +196,8 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="bg-white/95 backdrop-blur border border-white/15 shadow-xl py-8 px-4 sm:rounded-2xl sm:px-10">
           <ErrorMessage error={error || localError} />
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
@@ -208,7 +216,7 @@ export default function RegisterPage() {
                   required
                   value={formData.nickname}
                   onChange={handleChange}
-                  className={`appearance-none block w-full px-3 py-2 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm ${
+                  className={`appearance-none block w-full px-3 py-2 border rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white ${
                     nicknameAvailable === true
                       ? "border-green-500"
                       : nicknameAvailable === false
@@ -262,7 +270,7 @@ export default function RegisterPage() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white"
                   placeholder="vas@email.cz"
                 />
               </div>
@@ -284,7 +292,7 @@ export default function RegisterPage() {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white"
                   placeholder="Minimálně 8 znaků"
                 />
               </div>
@@ -306,7 +314,7 @@ export default function RegisterPage() {
                   required
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white"
                   placeholder="Zadejte heslo znovu"
                 />
               </div>
@@ -353,7 +361,7 @@ export default function RegisterPage() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
+                <span className="px-2 bg-white/95 backdrop-blur text-gray-500">
                   Nebo pokračujte s
                 </span>
               </div>
@@ -371,7 +379,7 @@ export default function RegisterPage() {
                     );
                   }
                 }}
-                className="w-full inline-flex items-center justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                className="w-full inline-flex items-center justify-center py-2 px-4 border border-white/15 rounded-xl shadow-sm bg-white/95 backdrop-blur text-sm font-medium text-gray-700 hover:bg-white transition-colors cursor-pointer"
               >
                 <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
                   <path

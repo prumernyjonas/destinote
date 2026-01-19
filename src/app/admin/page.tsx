@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import ClientAdminGate from "@/app/admin/ClientAdminGate";
+import PendingArticleCard from "@/components/admin/PendingArticleCard";
+import ArticleReviewDrawer from "@/components/admin/ArticleReviewDrawer";
+import UserDetailPanel from "@/components/admin/UserDetailPanel";
 
 type AdminArticle = {
   id: string;
@@ -12,6 +15,10 @@ type AdminArticle = {
   created_at: string;
   published_at?: string | null;
   main_image_url?: string | null;
+  summary?: string | null;
+  content?: string | null;
+  destination?: string | null;
+  approved_by?: string | null;
 };
 
 type AdminUser = {
@@ -24,32 +31,105 @@ type AdminUser = {
   avatar_url?: string | null;
 };
 
-type AdminComment = {
-  id: string;
-  article_id: string;
-  author_id: string;
-  body: string;
-  parent_id?: string | null;
-  created_at: string;
-  deleted_at?: string | null;
-};
-
 function AdminDashboard() {
   const [pendingArticles, setPendingArticles] = useState<AdminArticle[]>([]);
   const [approvedArticles, setApprovedArticles] = useState<AdminArticle[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [comments, setComments] = useState<AdminComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userQuery, setUserQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [articleSearchQuery, setArticleSearchQuery] = useState("");
+  const [selectedArticle, setSelectedArticle] = useState<(AdminArticle & { authorNickname?: string; approvedByNickname?: string }) | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isUserPanelOpen, setIsUserPanelOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isReadOnly, setIsReadOnly] = useState(false);
+
+  // Map userId -> nickname
+  const userNicknameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    users.forEach((u) => {
+      map.set(u.id, u.nickname);
+    });
+    return map;
+  }, [users]);
+
+  // Enrich articles with nicknames
+  const enrichedPendingArticles = useMemo(() => {
+    return pendingArticles.map((a) => ({
+      ...a,
+      authorNickname: userNicknameMap.get(a.author_id),
+    }));
+  }, [pendingArticles, userNicknameMap]);
+
+  const enrichedApprovedArticles = useMemo(() => {
+    return approvedArticles.map((a) => ({
+      ...a,
+      authorNickname: userNicknameMap.get(a.author_id),
+      approvedByNickname: a.approved_by ? userNicknameMap.get(a.approved_by) : undefined,
+    }));
+  }, [approvedArticles, userNicknameMap]);
+
+  // Filtered users
+  const filteredUsers = useMemo(() => {
+    let filtered = users;
+    if (userQuery.trim()) {
+      const q = userQuery.toLowerCase();
+      filtered = filtered.filter(
+        (u) =>
+          u.nickname?.toLowerCase().includes(q) ||
+          u.email?.toLowerCase().includes(q)
+      );
+    }
+    if (roleFilter !== "all") {
+      filtered = filtered.filter((u) => u.role === roleFilter);
+    }
+    return filtered;
+  }, [users, userQuery, roleFilter]);
+
+  // KPI calculations
+  const kpis = useMemo(() => {
+    // Dnes schváleno podle Europe/Prague timezone
+    const now = new Date();
+    const pragueTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Prague" }));
+    const todayStart = new Date(pragueTime);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(todayStart);
+    todayEnd.setHours(23, 59, 59, 999);
+    
+    const todayApproved = approvedArticles.filter((a) => {
+      if (!a.published_at) return false;
+      const pubDate = new Date(a.published_at);
+      // Převést na Prague timezone pro porovnání
+      const pubPragueTime = new Date(pubDate.toLocaleString("en-US", { timeZone: "Europe/Prague" }));
+      return pubPragueTime >= todayStart && pubPragueTime <= todayEnd;
+    }).length;
+    
+    return {
+      pending: pendingArticles.length,
+      approved: approvedArticles.length,
+      users: users.length,
+      todayApproved,
+    };
+  }, [pendingArticles, approvedArticles, users]);
+
+  // Filtered approved articles
+  const filteredApprovedArticles = useMemo(() => {
+    if (!articleSearchQuery.trim()) return enrichedApprovedArticles;
+    const q = articleSearchQuery.toLowerCase();
+    return enrichedApprovedArticles.filter(
+      (a) =>
+        a.title?.toLowerCase().includes(q) ||
+        a.authorNickname?.toLowerCase().includes(q) ||
+        a.destination?.toLowerCase().includes(q)
+    );
+  }, [enrichedApprovedArticles, articleSearchQuery]);
 
   function getUserId(): string | null {
     try {
       const keys = Object.keys(localStorage);
-      console.log(
-        "[AdminDashboard] Searching localStorage, keys:",
-        keys.length
-      );
       for (const key of keys) {
         if (key.includes("supabase") || key.includes("auth")) {
           try {
@@ -57,16 +137,14 @@ function AdminDashboard() {
             if (value) {
               const parsed = JSON.parse(value);
               if (parsed?.user?.id) {
-                console.log("[AdminDashboard] Found userId in key:", key);
                 return parsed.user.id;
               }
             }
           } catch (e) {
-            console.warn("[AdminDashboard] Error parsing key:", key, e);
+            // Ignore
           }
         }
       }
-      console.warn("[AdminDashboard] No userId found in localStorage");
     } catch (e) {
       console.error("[AdminDashboard] Error accessing localStorage:", e);
     }
@@ -82,7 +160,6 @@ function AdminDashboard() {
         throw new Error("Uživatel není přihlášen");
       }
 
-      // Sestavíme URL s userId jako query parametr
       const buildUrl = (base: string, params: Record<string, string> = {}) => {
         const url = new URL(base, window.location.origin);
         Object.entries(params).forEach(([key, value]) => {
@@ -95,58 +172,28 @@ function AdminDashboard() {
       const urls = {
         pending: buildUrl("/api/admin/articles", { status: "pending" }),
         approved: buildUrl("/api/admin/articles", { status: "approved" }),
-        users: buildUrl("/api/admin/users", { limit: "50" }),
-        comments: buildUrl("/api/admin/comments", { limit: "50" }),
+        users: buildUrl("/api/admin/users", { limit: "100" }),
       };
-      console.log("[AdminDashboard] Fetching with userId:", userId);
-      console.log("[AdminDashboard] URLs:", urls);
 
-      const [resPending, resApproved, resUsers, resComments] =
-        await Promise.all([
-          fetch(urls.pending),
-          fetch(urls.approved),
-          fetch(urls.users),
-          fetch(urls.comments),
-        ]);
+      const [resPending, resApproved, resUsers] = await Promise.all([
+        fetch(urls.pending),
+        fetch(urls.approved),
+        fetch(urls.users),
+      ]);
 
-      console.log("[AdminDashboard] Response statuses:", {
-        pending: resPending.status,
-        approved: resApproved.status,
-        users: resUsers.status,
-        comments: resComments.status,
-      });
-
-      if (
-        !resPending.ok ||
-        !resApproved.ok ||
-        !resUsers.ok ||
-        !resComments.ok
-      ) {
-        const errors = await Promise.all([
-          resPending.ok ? null : resPending.text().catch(() => "Unknown error"),
-          resApproved.ok
-            ? null
-            : resApproved.text().catch(() => "Unknown error"),
-          resUsers.ok ? null : resUsers.text().catch(() => "Unknown error"),
-          resComments.ok
-            ? null
-            : resComments.text().catch(() => "Unknown error"),
-        ]);
-        console.error("[AdminDashboard] API errors:", errors);
-        throw new Error("Chyba načítání dat - zkontroluj konzoli");
+      if (!resPending.ok || !resApproved.ok || !resUsers.ok) {
+        throw new Error("Chyba načítání dat");
       }
 
-      const [dPending, dApproved, dUsers, dComments] = await Promise.all([
+      const [dPending, dApproved, dUsers] = await Promise.all([
         resPending.json(),
         resApproved.json(),
         resUsers.json(),
-        resComments.json(),
       ]);
 
       setPendingArticles(dPending.items || []);
       setApprovedArticles(dApproved.items || []);
       setUsers(dUsers.items || []);
-      setComments(dComments.items || []);
     } catch (e: any) {
       setError(e.message || "Chyba načítání dat");
     } finally {
@@ -159,359 +206,363 @@ function AdminDashboard() {
   }, []);
 
   async function approveArticle(id: string) {
-    const userId = getUserId();
-    const url = userId
-      ? `/api/admin/articles/${id}/approve?userId=${encodeURIComponent(userId)}`
-      : `/api/admin/articles/${id}/approve`;
-    await fetch(url, { method: "POST" });
-    loadAll();
-  }
-
-  async function rejectArticle(id: string) {
-    const reason = prompt("Důvod zamítnutí (volitelné):") || "";
-    const userId = getUserId();
-    const url = userId
-      ? `/api/admin/articles/${id}/reject?userId=${encodeURIComponent(userId)}`
-      : `/api/admin/articles/${id}/reject`;
-    await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ reason }),
-    });
-    loadAll();
-  }
-
-  async function removeComment(id: string) {
-    const userId = getUserId();
-    const url = userId
-      ? `/api/admin/comments/${id}?userId=${encodeURIComponent(userId)}`
-      : `/api/admin/comments/${id}`;
-    await fetch(url, { method: "DELETE" });
-    loadAll();
-  }
-
-  async function searchUsers() {
-    setLoading(true);
-    setError(null);
+    setIsProcessing(true);
     try {
       const userId = getUserId();
-      const url = new URL("/api/admin/users", window.location.origin);
-      if (userQuery.trim()) url.searchParams.set("q", userQuery.trim());
-      if (userId) url.searchParams.set("userId", userId);
-      const res = await fetch(url.toString(), { cache: "no-store" });
+      const url = userId
+        ? `/api/admin/articles/${id}/approve?userId=${encodeURIComponent(userId)}`
+        : `/api/admin/articles/${id}/approve`;
+      const res = await fetch(url, { method: "POST" });
       if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.error || "Chyba načítání uživatelů");
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Chyba při schvalování");
       }
-      const d = await res.json();
-      setUsers(d.items || []);
+      await loadAll();
     } catch (e: any) {
-      setError(e.message || "Chyba");
+      setError(e.message || "Chyba při schvalování");
     } finally {
-      setLoading(false);
+      setIsProcessing(false);
     }
   }
 
+  async function rejectArticle(id: string, reason?: string) {
+    setIsProcessing(true);
+    try {
+      const userId = getUserId();
+      const url = userId
+        ? `/api/admin/articles/${id}/reject?userId=${encodeURIComponent(userId)}`
+        : `/api/admin/articles/${id}/reject`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reason: reason || "" }),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Chyba při zamítání");
+      }
+      await loadAll();
+    } catch (e: any) {
+      setError(e.message || "Chyba při zamítání");
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  const handleArticleClick = (article: AdminArticle & { authorNickname?: string; approvedByNickname?: string }, readOnly = false) => {
+    setSelectedArticle({
+      ...article,
+      authorNickname: userNicknameMap.get(article.author_id),
+      approvedByNickname: article.approved_by ? userNicknameMap.get(article.approved_by) : undefined,
+    });
+    setIsReadOnly(readOnly);
+    setIsDrawerOpen(true);
+  };
+
+  const handleDrawerClose = () => {
+    setIsDrawerOpen(false);
+    setSelectedArticle(null);
+    setIsReadOnly(false);
+  };
+
+  const handleUserClick = (user: AdminUser) => {
+    setSelectedUser(user);
+    setIsUserPanelOpen(true);
+  };
+
+  const handleUserPanelClose = () => {
+    setIsUserPanelOpen(false);
+    setSelectedUser(null);
+  };
+
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-12">
-      <div>
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-gray-600 mt-2">
-          Přehled všech sekcí administrace na jedné stránce
-        </p>
-      </div>
+    <div className="min-h-screen relative">
+      {/* Dark blue background gradient */}
+      <div 
+        className="fixed inset-0 -z-10"
+        style={{
+          background: 'linear-gradient(135deg, rgb(15, 30, 75) 0%, rgb(28, 57, 142) 50%, rgb(20, 40, 100) 100%)',
+        }}
+      />
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-          {error}
+      <main className="max-w-6xl mx-auto px-4 py-8 relative z-10">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
+          <p className="text-sm text-white/80">
+            Správa článků a uživatelů platformy
+          </p>
         </div>
-      )}
 
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="text-gray-600">Načítám data…</div>
-        </div>
-      ) : (
-        <>
-          {/* Články čekající ke schválení */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">
-                Články čekající ke schválení
-              </h2>
-              <div className="text-sm text-gray-600">
-                {pendingArticles.length} článků
-              </div>
-            </div>
-            {pendingArticles.length === 0 ? (
-              <div className="bg-gray-50 border rounded-lg p-6 text-center text-gray-500">
-                Žádné články ke schválení
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pendingArticles.map((a) => {
-                  const isRejected = a.status === "rejected";
-                  return (
-                    <div
-                      key={a.id}
-                      className={`border rounded-lg bg-white shadow-sm overflow-hidden flex flex-col ${
-                        isRejected ? "opacity-60 pointer-events-none" : ""
-                      }`}
-                    >
-                      <div className="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden relative">
-                        {a.main_image_url ? (
-                          <img
-                            src={a.main_image_url}
-                            alt={a.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-gray-500 text-sm">
-                            Bez obrázku
-                          </span>
-                        )}
-                        {isRejected && (
-                          <span className="absolute top-2 right-2 text-xs px-2 py-1 rounded bg-red-100 text-red-700">
-                            Zamítnuto
-                          </span>
-                        )}
-                      </div>
-                      <div className="p-4 flex flex-col gap-3 flex-1">
-                        <div>
-                          <div className="text-xs text-gray-500">
-                            {new Date(a.created_at).toLocaleDateString("cs-CZ")}
-                          </div>
-                          <h3 className="text-base font-semibold text-gray-900 line-clamp-2">
-                            {a.title}
-                          </h3>
-                          <div className="text-xs text-gray-500 mt-1">
-                            Autor: {a.author_id.substring(0, 8)}...
-                          </div>
-                        </div>
-                        <div className="flex gap-2 mt-auto">
-                          <Button
-                            variant="outline"
-                            onClick={() => rejectArticle(a.id)}
-                            className="text-sm w-full cursor-pointer"
-                            disabled={isRejected}
-                          >
-                            Zamítnout
-                          </Button>
-                          <Button
-                            onClick={() => approveArticle(a.id)}
-                            className="text-sm w-full cursor-pointer"
-                            disabled={isRejected}
-                          >
-                            Schválit
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+        {error && (
+          <div className="mb-6 bg-red-900/30 border border-red-500/50 rounded-2xl p-4 text-red-200 text-sm backdrop-blur">
+            {error}
+          </div>
+        )}
 
-          {/* Schválené články */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Schválené články</h2>
-              <div className="text-sm text-gray-600">
-                {approvedArticles.length} článků
-              </div>
-            </div>
-            {approvedArticles.length === 0 ? (
-              <div className="bg-gray-50 border rounded-lg p-6 text-center text-gray-500">
-                Žádné schválené články
-              </div>
-            ) : (
-              <div className="bg-white border rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="text-left px-4 py-3 border-b font-medium">
-                          Název
-                        </th>
-                        <th className="text-left px-4 py-3 border-b font-medium">
-                          Autor ID
-                        </th>
-                        <th className="text-left px-4 py-3 border-b font-medium">
-                          Publikováno
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {approvedArticles.map((a) => (
-                        <tr key={a.id} className="hover:bg-gray-50 border-b">
-                          <td className="px-4 py-3">{a.title}</td>
-                          <td className="px-4 py-3 text-gray-600 text-sm">
-                            {a.author_id.substring(0, 8)}...
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 text-sm">
-                            {new Date(
-                              a.published_at || a.created_at
-                            ).toLocaleDateString("cs-CZ")}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="text-white/80">Načítám data…</div>
+          </div>
+        ) : (
+          <>
+            {/* KPI Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="rounded-2xl border border-white/15 bg-white/95 backdrop-blur shadow-xl p-6">
+                <div className="text-sm text-slate-600 mb-1">Čekající články</div>
+                <div className="text-2xl font-semibold text-slate-900">
+                  {kpis.pending}
                 </div>
               </div>
-            )}
-          </section>
+              <div className="rounded-2xl border border-white/15 bg-white/95 backdrop-blur shadow-xl p-6">
+                <div className="text-sm text-slate-600 mb-1">Schválené články</div>
+                <div className="text-2xl font-semibold text-slate-900">
+                  {kpis.approved}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/15 bg-white/95 backdrop-blur shadow-xl p-6">
+                <div className="text-sm text-slate-600 mb-1">Uživatelé</div>
+                <div className="text-2xl font-semibold text-slate-900">
+                  {kpis.users}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/15 bg-white/95 backdrop-blur shadow-xl p-6">
+                <div className="text-sm text-slate-600 mb-1">Dnes schváleno</div>
+                <div className="text-2xl font-semibold text-slate-900">
+                  {kpis.todayApproved}
+                </div>
+              </div>
+            </div>
 
-          {/* Uživatelé */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Uživatelé</h2>
-              <div className="text-sm text-gray-600">
-                {users.length} uživatelů
+            {/* Pending Articles Section */}
+            <section className="mb-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-white">
+                  Články čekající na schválení
+                </h2>
+                <span className="text-sm text-white/80">
+                  {pendingArticles.length} článků
+                </span>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                value={userQuery}
-                onChange={(e) => setUserQuery(e.target.value)}
-                placeholder="Hledat podle emailu nebo přezdívky…"
-                className="border rounded-md px-3 py-2 flex-1 max-w-md"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") searchUsers();
-                }}
-              />
-              <Button onClick={searchUsers} className="cursor-pointer">
-                Hledat
-              </Button>
-              <Button
-                variant="outline"
-                onClick={loadAll}
-                className="cursor-pointer"
-              >
-                Obnovit vše
-              </Button>
-            </div>
-            {users.length === 0 ? (
-              <div className="bg-gray-50 border rounded-lg p-6 text-center text-gray-500">
-                Žádní uživatelé
-              </div>
-            ) : (
-              <div className="bg-white border rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="text-left px-4 py-3 border-b font-medium">
-                          Uživatel
-                        </th>
-                        <th className="text-left px-4 py-3 border-b font-medium">
-                          Email
-                        </th>
-                        <th className="text-left px-4 py-3 border-b font-medium">
-                          Přezdívka
-                        </th>
-                        <th className="text-left px-4 py-3 border-b font-medium">
-                          Role
-                        </th>
-                        <th className="text-left px-4 py-3 border-b font-medium">
-                          Vytvořen
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map((u) => (
-                        <tr key={u.id} className="hover:bg-gray-50 border-b">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-3">
-                              {u.avatar_url ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={u.avatar_url}
-                                  alt={u.nickname || u.email || u.id}
-                                  className="w-8 h-8 rounded-full object-cover border"
-                                />
-                              ) : (
-                                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-sm">
-                                  {u.nickname?.charAt(0)?.toUpperCase() ||
-                                    u.email?.charAt(0)?.toUpperCase() ||
-                                    "U"}
-                                </div>
-                              )}
-                              <div className="text-sm text-gray-600 truncate max-w-[200px]">
-                                {u.id.substring(0, 8)}...
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">{u.email || "—"}</td>
-                          <td className="px-4 py-3">{u.nickname}</td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`px-2 py-1 rounded text-xs font-medium ${
-                                u.role === "admin"
-                                  ? "bg-purple-100 text-purple-700"
-                                  : u.role === "moderator"
-                                  ? "bg-blue-100 text-blue-700"
-                                  : "bg-gray-100 text-gray-700"
-                              }`}
+              {pendingArticles.length === 0 ? (
+                <div className="rounded-2xl border border-white/15 bg-white/95 backdrop-blur shadow-xl p-8 text-center text-slate-500">
+                  Žádné články ke schválení
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {enrichedPendingArticles.map((article) => (
+                    <PendingArticleCard
+                      key={article.id}
+                      article={article}
+                      onClick={() => handleArticleClick(article, false)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Approved Articles + Users - 2 columns on desktop */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Approved Articles - 7/12 */}
+              <section className="lg:col-span-7">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-white">
+                    Schválené články
+                  </h2>
+                  <span className="text-sm text-white/80">
+                    {filteredApprovedArticles.length} z {approvedArticles.length} článků
+                  </span>
+                </div>
+                
+                {/* Search */}
+                <div className="mb-4">
+                  <input
+                    type="text"
+                    value={articleSearchQuery}
+                    onChange={(e) => setArticleSearchQuery(e.target.value)}
+                    placeholder="Hledat podle názvu, autora nebo destinace..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-white/15 bg-white/95 backdrop-blur text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 shadow-sm"
+                  />
+                </div>
+
+                {filteredApprovedArticles.length === 0 ? (
+                  <div className="rounded-2xl border border-white/15 bg-white/95 backdrop-blur shadow-xl p-8 text-center text-slate-500">
+                    {articleSearchQuery ? "Žádné články neodpovídají vyhledávání" : "Žádné schválené články"}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-white/15 overflow-hidden bg-white/95 backdrop-blur shadow-xl">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full">
+                        <thead className="bg-slate-50/80">
+                          <tr>
+                            <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-slate-600 font-medium">
+                              Název
+                            </th>
+                            <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-slate-600 font-medium">
+                              Autor
+                            </th>
+                            <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-slate-600 font-medium">
+                              Schválil
+                            </th>
+                            <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-slate-600 font-medium">
+                              Publikováno
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200/50">
+                          {filteredApprovedArticles.map((a) => (
+                            <tr
+                              key={a.id}
+                              onClick={() => handleArticleClick(a, true)}
+                              className="hover:bg-black/5 cursor-pointer transition-colors"
                             >
-                              {u.role}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 text-sm">
-                            {new Date(u.created_at).toLocaleDateString("cs-CZ")}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* Komentáře */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">Komentáře</h2>
-              <div className="text-sm text-gray-600">
-                {comments.length} komentářů
-              </div>
-            </div>
-            {comments.length === 0 ? (
-              <div className="bg-gray-50 border rounded-lg p-6 text-center text-gray-500">
-                Žádné komentáře
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {comments.map((c) => (
-                  <div
-                    key={c.id}
-                    className="bg-white border rounded-lg p-4 flex items-start justify-between gap-4"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-gray-600 mb-2">
-                        Článek: {c.article_id.substring(0, 8)}... • Autor:{" "}
-                        {c.author_id.substring(0, 8)}... •{" "}
-                        {new Date(c.created_at).toLocaleString("cs-CZ")}
-                      </div>
-                      <div className="text-gray-900">{c.body}</div>
-                    </div>
-                    <div className="shrink-0">
-                      <Button
-                        variant="outline"
-                        onClick={() => removeComment(c.id)}
-                        className="text-sm cursor-pointer"
-                      >
-                        Smazat
-                      </Button>
+                              <td className="px-4 py-3 text-sm text-slate-900 truncate max-w-xs font-medium">
+                                {a.title}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-600 truncate">
+                                {a.authorNickname || a.author_id.substring(0, 8) + "..."}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-600 truncate">
+                                {a.approvedByNickname || (a.approved_by ? a.approved_by.substring(0, 8) + "..." : "—")}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-600">
+                                {new Date(
+                                  a.published_at || a.created_at
+                                ).toLocaleDateString("cs-CZ")}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </>
+                )}
+              </section>
+
+              {/* Users - 5/12 */}
+              <section className="lg:col-span-5">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-white">Uživatelé</h2>
+                  <span className="text-sm text-white/80">
+                    {filteredUsers.length} z {users.length} uživatelů
+                  </span>
+                </div>
+
+                {/* Search and filters */}
+                <div className="mb-4 space-y-3">
+                  <input
+                    value={userQuery}
+                    onChange={(e) => setUserQuery(e.target.value)}
+                    placeholder="Hledat podle nickname nebo emailu…"
+                    className="w-full px-4 py-2.5 rounded-xl border border-white/15 bg-white/95 backdrop-blur text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 shadow-sm"
+                  />
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={roleFilter}
+                      onChange={(e) => setRoleFilter(e.target.value)}
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-white/15 bg-white/95 backdrop-blur text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 shadow-sm"
+                    >
+                      <option value="all">Všechny role</option>
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                      <option value="moderator">Moderator</option>
+                    </select>
+                    <Button
+                      variant="outline"
+                      onClick={loadAll}
+                      className="cursor-pointer"
+                      title="Obnovit"
+                    >
+                      ↻
+                    </Button>
+                  </div>
+                </div>
+
+                {filteredUsers.length === 0 ? (
+                  <div className="rounded-2xl border border-white/15 bg-white/95 backdrop-blur shadow-xl p-8 text-center text-slate-500">
+                    Žádní uživatelé
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-white/15 overflow-hidden bg-white/95 backdrop-blur shadow-xl">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full">
+                        <thead className="bg-slate-50/80">
+                          <tr>
+                            <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-slate-600 font-medium">
+                              Nickname
+                            </th>
+                            <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-slate-600 font-medium">
+                              Role
+                            </th>
+                            <th className="text-left px-4 py-3 text-xs uppercase tracking-wide text-slate-600 font-medium">
+                              Vytvořen
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200/50">
+                          {filteredUsers.map((u) => (
+                            <tr
+                              key={u.id}
+                              onClick={() => handleUserClick(u)}
+                              className="hover:bg-black/5 cursor-pointer transition-colors"
+                            >
+                              <td className="px-4 py-3">
+                                <div className="text-sm font-medium text-slate-900">
+                                  {u.nickname}
+                                </div>
+                                {u.email && (
+                                  <div className="text-xs text-slate-500 mt-0.5">
+                                    {u.email}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span
+                                  className={`px-2 py-1 rounded text-xs font-medium ${
+                                    u.role === "admin"
+                                      ? "bg-purple-100 text-purple-700"
+                                      : u.role === "moderator"
+                                      ? "bg-blue-100 text-blue-700"
+                                      : "bg-gray-100 text-gray-700"
+                                  }`}
+                                >
+                                  {u.role}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-600">
+                                {new Date(u.created_at).toLocaleDateString("cs-CZ")}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </section>
+            </div>
+          </>
+        )}
+      </main>
+
+      {/* Article Review Drawer */}
+      <ArticleReviewDrawer
+        isOpen={isDrawerOpen}
+        onClose={handleDrawerClose}
+        article={selectedArticle}
+        onApprove={approveArticle}
+        onReject={rejectArticle}
+        isProcessing={isProcessing}
+        readOnly={isReadOnly}
+      />
+
+      {/* User Detail Panel */}
+      {selectedUser && (
+        <UserDetailPanel
+          isOpen={isUserPanelOpen}
+          onClose={handleUserPanelClose}
+          user={selectedUser}
+        />
       )}
     </div>
   );

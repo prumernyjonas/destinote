@@ -618,10 +618,10 @@ export default function ProfilePage({
 
         {/* CIZÍ PROFIL - všechno najednou */}
         {!isOwnProfile && (
-          <>
+          <div className="mt-6 space-y-6">
             {/* Navštívené země */}
             {visitedCountries.length > 0 && (
-              <Card className="mb-6 rounded-2xl border border-slate-200 shadow-sm">
+              <Card className="rounded-2xl border border-slate-200 shadow-sm">
                 <CardHeader>
                   <CardTitle>
                     Navštívené země ({visitedCountries.length})
@@ -647,7 +647,7 @@ export default function ProfilePage({
 
             {/* Články */}
             {articles.length > 0 && (
-              <Card className="mb-8 rounded-2xl border border-slate-200 shadow-sm">
+              <Card className="rounded-2xl border border-slate-200 shadow-sm">
                 <CardHeader>
                   <CardTitle>Články ({articles.length})</CardTitle>
                 </CardHeader>
@@ -689,14 +689,14 @@ export default function ProfilePage({
             )}
 
             {articles.length === 0 && visitedCountries.length === 0 && (
-              <Card className="mb-8 rounded-2xl border border-slate-200 shadow-sm">
+              <Card className="rounded-2xl border border-slate-200 shadow-sm">
                 <CardContent className="py-12 text-center text-slate-500">
                   <span className="text-6xl mb-4 block">🌍</span>
                   <p>Tento uživatel zatím nemá žádný cestovatelský obsah.</p>
                 </CardContent>
               </Card>
             )}
-          </>
+          </div>
         )}
       </main>
 

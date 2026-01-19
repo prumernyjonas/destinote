@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -29,6 +30,7 @@ type Country = {
 type SortOption = "newest" | "oldest" | "popular";
 
 export default function CommunityPage() {
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<"feed" | "top" | "following" | "friends">(
     "feed"
   );
@@ -44,6 +46,14 @@ export default function CommunityPage() {
   const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
   const [countrySearchQuery, setCountrySearchQuery] = useState("");
   const countryDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Načíst zemi z URL parametru při načtení stránky
+  useEffect(() => {
+    const countryParam = searchParams.get("country");
+    if (countryParam) {
+      setSelectedCountry(decodeURIComponent(countryParam));
+    }
+  }, [searchParams]);
 
   // Načíst seznam zemí
   useEffect(() => {

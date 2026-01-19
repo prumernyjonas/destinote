@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   let query = admin
     .from("articles")
     .select(
-      "id, author_id, title, status, created_at, updated_at, published_at, main_image_url, main_image_public_id"
+      "id, author_id, title, status, created_at, updated_at, published_at, main_image_url, main_image_public_id, approved_by, summary, content, destination"
     )
     .order("created_at", { ascending: false });
 

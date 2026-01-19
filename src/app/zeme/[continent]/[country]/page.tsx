@@ -3,9 +3,10 @@ import cs from "i18n-iso-countries/langs/cs.json";
 import type { Metadata } from "next";
 import Link from "next/link";
 import CountryGuide from "@/components/guides/CountryGuide";
-import FlightsWidget from "@/components/flights/FlightsWidget";
-import ArticlesTeaser from "@/components/articles/ArticlesTeaser";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+
+// Zajistit, že se stránka vždy načte s čerstvými daty (kvůli stavu navštívených zemí)
+export const dynamic = "force-dynamic";
 
 // Registrace českého locale (na serveru stačí jednou, chráněno try-catch)
 try {
@@ -147,41 +148,14 @@ export default async function CountryDetailPage({
         <span className="text-gray-900 font-semibold">{displayName}</span>
       </nav>
 
-      {/* Header s vlajkou a názvem */}
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-3">
-          {resolvedIso2 ? (
-            <span
-              className={`fi fi-${resolvedIso2.toLowerCase()}`}
-              style={{ fontSize: 56 }}
-            />
-          ) : null}
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{displayName}</h1>
-            <p className="text-gray-600 mt-1">
-              Region: <span className="font-medium">{continentLabel}</span>
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Hlavní obsah - mapa a průvodce */}
       <div className="mb-8">
         <CountryGuide
           name={displayName}
           iso2={resolvedIso2}
           continent={continentLabel}
+          currentPath={`/zeme/${continent}/${country}`}
         />
-      </div>
-
-      {/* Další sekce - články a letenky */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <ArticlesTeaser title="Cestopisy a články" href="/komunita" />
-        </div>
-        <div>
-          <FlightsWidget query={displayName} />
-        </div>
       </div>
     </main>
   );
