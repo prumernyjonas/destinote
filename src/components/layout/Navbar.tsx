@@ -16,6 +16,7 @@ import {
   FiMenu,
   FiNavigation,
   FiSearch,
+  FiSettings,
   FiUser,
   FiUsers,
   FiX,
@@ -73,6 +74,14 @@ export default function Navbar() {
           },
         ]
       : []),
+    {
+      label: "Nastavení",
+      icon: FiSettings,
+      onClick: () => {
+        setMenuOpen(false);
+        router.push("/nastaveni");
+      },
+    },
     {
       label: "Nápověda",
       icon: FiHelpCircle,
@@ -754,6 +763,17 @@ export default function Navbar() {
                         <span>Dashboard</span>
                       </button>
                     )}
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setMobileUserMenuOpen(false);
+                        router.push("/nastaveni");
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
+                    >
+                      <FiSettings className="text-lg" />
+                      <span>Nastavení</span>
+                    </button>
                     <button
                       onClick={() => {
                         setMobileMenuOpen(false);

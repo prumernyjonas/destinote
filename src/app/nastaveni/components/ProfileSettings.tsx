@@ -202,21 +202,37 @@ export default function ProfileSettings() {
 
     try {
       // Nejdřív nahrát pending avatar, pokud existuje
+      let uploadedAvatarUrl: string | null = null;
       if (pendingAvatarBlob) {
         setAvatarUploading(true);
         try {
-          const newAvatarUrl = await uploadAvatar(pendingAvatarBlob);
-          if (newAvatarUrl) {
-            setAvatarUrl(newAvatarUrl);
+          console.log("[ProfileSettings] Nahrávám avatar...");
+          uploadedAvatarUrl = await uploadAvatar(pendingAvatarBlob);
+          if (uploadedAvatarUrl) {
+            console.log("[ProfileSettings] Avatar úspěšně nahrán:", uploadedAvatarUrl);
+            setAvatarUrl(uploadedAvatarUrl);
             // Vyčistit pending avatar
             if (pendingAvatarPreview) {
               URL.revokeObjectURL(pendingAvatarPreview);
             }
             setPendingAvatarBlob(null);
             setPendingAvatarPreview(null);
+            
+            // Aktualizovat uživatele hned po nahrání avatara, aby se zobrazil všude
+            if (refreshUser) {
+              try {
+                await refreshUser();
+                console.log("[ProfileSettings] User objekt aktualizován po nahrání avatara");
+              } catch (err) {
+                console.error("[ProfileSettings] Chyba při refreshUser po nahrání avatara:", err);
+                // Necháme to projít, protože avatar už je nahráný
+              }
+            }
+          } else {
+            console.warn("[ProfileSettings] Avatar nahrán, ale URL není k dispozici");
           }
         } catch (avatarErr: any) {
-          console.error("Chyba při nahrávání avatara:", avatarErr);
+          console.error("[ProfileSettings] Chyba při nahrávání avatara:", avatarErr);
           toast.error(avatarErr.message || "Chyba při nahrávání avatara");
           setAvatarUploading(false);
           setSaving(false);
@@ -303,9 +319,12 @@ export default function ProfileSettings() {
         }
       }
 
-      // Na pozadí načíst avatar z DB (neblokující operace)
-      if (user?.uid) {
-        fetch(`/api/users/${user.uid}`)
+      // Pokud jsme nahráli avatar, už máme URL, takže nemusíme načítat z DB
+      // Pokud jsme nenahráli avatar, ale změnili jsme nickname, načteme avatar z DB na pozadí
+      if (!uploadedAvatarUrl && user?.uid) {
+        fetch(`/api/users/${user.uid}?t=${Date.now()}`, {
+          cache: 'no-store',
+        })
           .then((profileRes) => {
             if (profileRes.ok) {
               return profileRes.json();
@@ -400,21 +419,53 @@ export default function ProfileSettings() {
         headers["Authorization"] = `Bearer ${accessToken}`;
       }
 
-      const res = await fetch("/api/users/avatar", {
-        method: "POST",
-        headers,
-        body: formData,
-      });
+      // Přidat timeout pro request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.error("[ProfileSettings] Avatar upload timeout!");
+        controller.abort();
+      }, 60000); // 60 sekund timeout pro upload
 
-      const data = await res.json();
+      let res: Response;
+      try {
+        res = await fetch("/api/users/avatar", {
+          method: "POST",
+          headers,
+          body: formData,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        console.log("[ProfileSettings] Avatar upload dokončen, status:", res.status);
+      } catch (fetchErr: any) {
+        clearTimeout(timeoutId);
+        console.error("[ProfileSettings] Avatar upload fetch error:", fetchErr);
+        if (fetchErr.name === "AbortError") {
+          throw new Error("Nahrávání avatara trvalo příliš dlouho. Zkuste to prosím znovu.");
+        }
+        throw fetchErr;
+      }
+
+      let data: any;
+      try {
+        const responseText = await res.text();
+        console.log("[ProfileSettings] Avatar upload response:", responseText.substring(0, 200));
+        data = JSON.parse(responseText);
+      } catch (parseErr) {
+        console.error("[ProfileSettings] Chyba při parsování avatar upload response:", parseErr);
+        throw new Error("Neplatná odpověď ze serveru při nahrávání avatara");
+      }
 
       if (!res.ok) {
         throw new Error(data.error || "Chyba při nahrávání avatara");
       }
 
-      return data.avatarUrl && data.avatarUrl.trim() !== "" ? data.avatarUrl : null;
+      const avatarUrl = data.avatarUrl && data.avatarUrl.trim() !== "" ? data.avatarUrl : null;
+      if (!avatarUrl) {
+        console.warn("[ProfileSettings] Avatar upload úspěšný, ale URL není v response");
+      }
+      return avatarUrl;
     } catch (err: any) {
-      console.error("Chyba při nahrávání avatara:", err);
+      console.error("[ProfileSettings] Chyba při nahrávání avatara:", err);
       throw err;
     }
   };
