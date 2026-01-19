@@ -22,6 +22,7 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase/client";
+import { marble } from "@/app/layout";
 
 function getInitial(user: { displayName?: string; email?: string } | null) {
   return (
@@ -233,14 +234,9 @@ export default function Navbar() {
             {/* Left: Logo */}
             <div className="flex items-center space-x-3">
               <Link href="/" className="flex items-center space-x-2">
-                <Image
-                  src="/logo.svg"
-                  alt="Destinote"
-                  width={120}
-                  height={26}
-                  priority
-                  className="h-8 w-auto md:h-9"
-                />
+                <span className={`${marble.variable} text-2xl md:text-3xl font-normal text-blue-900`} style={{ fontFamily: 'var(--font-marble)' }}>
+                  Destinote
+                </span>
               </Link>
             </div>
 
@@ -501,13 +497,9 @@ export default function Navbar() {
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-blue-200 bg-[#cbe1f7]">
               <div className="flex items-center space-x-2">
-                <Image
-                  src="/logo.svg"
-                  alt="Destinote"
-                  width={140}
-                  height={36}
-                  className="h-8 w-auto"
-                />
+                <span className={`${marble.variable} text-2xl font-normal text-blue-900`} style={{ fontFamily: 'var(--font-marble)' }}>
+                  Destinote
+                </span>
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}

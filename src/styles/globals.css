@@ -12,6 +12,8 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-marble: var(--font-marble);
+  
+  --font-family-marble: var(--font-marble);
 
   /* Travel Blue Color Palette */
   --color-travel-50: #b9d6f2;

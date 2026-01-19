@@ -22,7 +22,7 @@ const poppins = Poppins({
   weight: ["400", "500", "600", "700"],
 });
 
-const marble = localFont({
+export const marble = localFont({
   src: "../fonts/Marble-Regular.woff2",
   variable: "--font-marble",
   display: "swap",
@@ -46,7 +46,7 @@ export default function RootLayout({
   return (
     <html lang="cs">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${marble.variable} ${poppins.className} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${poppins.className} antialiased`}
       >
         <ToastProvider>
           <AuthProvider>
