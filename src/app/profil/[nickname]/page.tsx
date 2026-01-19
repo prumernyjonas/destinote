@@ -20,6 +20,10 @@ import { FollowButton } from "@/components/profile/FollowButton";
 import { FollowersModal } from "@/components/profile/FollowersModal";
 import { BadgesGrid } from "@/components/dashboard/BadgesGrid";
 import DashboardPublicWorldMap from "@/components/DashboardPublicWorldMap";
+import ProfileHero from "@/components/profile/ProfileHero";
+import ProfileHeader from "@/components/profile/ProfileHeader";
+import ProfileTabs from "@/components/profile/ProfileTabs";
+import ArticleList from "@/components/profile/ArticleList";
 import Link from "next/link";
 import Image from "next/image";
 import { FiMap, FiFileText, FiAward } from "react-icons/fi";
@@ -48,7 +52,7 @@ export default function ProfilePage({
   const allowedTabs = new Set(["map", "articles", "badges"]);
   const qpTab = searchParams?.get("tab") || "map";
   const initialTab = allowedTabs.has(qpTab) ? qpTab : "map";
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState<"map" | "articles" | "badges">(initialTab as "map" | "articles" | "badges");
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [articles, setArticles] = useState<Article[]>([]);
@@ -61,6 +65,8 @@ export default function ProfilePage({
   const [modalType, setModalType] = useState<"followers" | "following" | null>(
     null
   );
+  const [deleteModal, setDeleteModal] = useState<{ articleId: string; articleTitle: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Pro vlastní profil - editace
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -113,9 +119,8 @@ export default function ProfilePage({
 
   const handleTabChange = useCallback(
     (tab: "map" | "articles" | "badges") => {
-      setActiveTab(tab);
       const slugged = slugifyNickname(decodeURIComponent(nickname));
-      router.push(`/profil/${slugged}?tab=${tab}`);
+      router.push(`/profil/${slugged}?tab=${tab}`, { scroll: false });
     },
     [router, nickname]
   );
@@ -123,8 +128,14 @@ export default function ProfilePage({
   // Sync tab with query param
   useEffect(() => {
     const qpTab = searchParams?.get("tab") || "map";
-    const sanitized = allowedTabs.has(qpTab) ? qpTab : "map";
-    if (sanitized !== activeTab) setActiveTab(sanitized);
+    if (allowedTabs.has(qpTab)) {
+      const sanitized = qpTab as "map" | "articles" | "badges";
+      if (sanitized !== activeTab) {
+        setActiveTab(sanitized);
+      }
+    } else if (activeTab !== "map") {
+      setActiveTab("map");
+    }
   }, [searchParams]);
 
   // Helper pro získání access tokenu z localStorage
@@ -319,6 +330,40 @@ export default function ProfilePage({
     }
   };
 
+  const handleDeleteArticle = async () => {
+    if (!deleteModal || !user) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const accessToken = getAccessToken();
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+        "x-user-id": user.uid,
+      };
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      const delRes = await fetch(`/api/articles/${encodeURIComponent(deleteModal.articleId)}`, {
+        method: "DELETE",
+        headers,
+      });
+
+      if (!delRes.ok) {
+        const errorData = await delRes.json().catch(() => ({}));
+        throw new Error(errorData.error || "Smazání článku selhalo");
+      }
+
+      // Odstranit článek ze seznamu
+      setArticles((prev) => prev.filter((a) => a.id !== deleteModal.articleId));
+      setDeleteModal(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nepodařilo se smazat článek");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading || authLoading) {
     return <LoadingSpinner text="Načítání profilu..." />;
   }
@@ -379,272 +424,131 @@ export default function ProfilePage({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Tab navigace - jen pro vlastní profil */}
-      {isOwnProfile && (
-        <nav className="bg-white border-b">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex space-x-8">
-              <button
-                onClick={() => handleTabChange("map")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-2 ${
-                  activeTab === "map"
-                    ? "border-emerald-500 text-emerald-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <FiMap className="w-4 h-4" />
-                Mapa cest
-              </button>
-              <button
-                onClick={() => handleTabChange("articles")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-2 ${
-                  activeTab === "articles"
-                    ? "border-emerald-500 text-emerald-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <FiFileText className="w-4 h-4" />
-                Moje články
-              </button>
-              <button
-                onClick={() => handleTabChange("badges")}
-                className={`py-4 px-1 border-b-2 font-medium text-sm cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-2 ${
-                  activeTab === "badges"
-                    ? "border-emerald-500 text-emerald-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                <FiAward className="w-4 h-4" />
-                Odznaky
-              </button>
-            </div>
-          </div>
-        </nav>
-      )}
+    <div className="min-h-screen relative">
+      {/* Hero sekce jako pozadí za celou stránkou */}
+      <ProfileHero />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <ErrorMessage error={error} />
 
-        {/* Profilový header */}
-        <Card className="mb-6">
-          <CardContent>
-            <div className="flex flex-col md:flex-row md:items-start gap-6 py-6">
-              {/* Avatar */}
-              <div className="flex-shrink-0">
-                {isOwnProfile ? (
-                  <button
-                    type="button"
-                    className="relative group cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95"
-                    title="Změnit profilovou fotku"
-                    onClick={() => {
-                      const input = document.getElementById(
-                        "avatar-file-input"
-                      ) as HTMLInputElement | null;
-                      input?.click();
-                    }}
-                  >
-                    {avatarUrl ? (
-                      <img
-                        src={avatarUrl}
-                        alt={profile.displayName}
-                        className="h-24 w-24 md:h-32 md:w-32 rounded-full object-cover border-4 border-white shadow-lg transition-shadow duration-200 group-hover:shadow-xl"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div className="h-24 w-24 md:h-32 md:w-32 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-3xl border-4 border-white shadow-lg transition-shadow duration-200 group-hover:shadow-xl">
-                        {initials || "?"}
-                      </div>
-                    )}
-                    <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition-all duration-200 flex items-center justify-center">
-                      <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-sm font-medium drop-shadow-lg">
-                        Změnit
-                      </span>
-                    </div>
-                    {avatarUploading && (
-                      <div className="absolute inset-0 rounded-full bg-white/60 flex items-center justify-center text-xs font-medium">
-                        Nahrávám…
-                      </div>
-                    )}
-                  </button>
-                ) : avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={profile.displayName}
-                    className="h-24 w-24 md:h-32 md:w-32 rounded-full object-cover border-4 border-white shadow-lg"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="h-24 w-24 md:h-32 md:w-32 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-3xl border-4 border-white shadow-lg">
-                    {initials || "?"}
-                  </div>
-                )}
-                <input
-                  id="avatar-file-input"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarUpload}
-                />
-              </div>
+        {/* Wrapper pro profilový header s overflow-hidden pro správné zaoblení rohů */}
+        <div className="mt-6 rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm">
+          {/* Profilový header */}
+          <div className="p-6">
+            <ProfileHeader
+              profile={profile}
+              avatarUrl={avatarUrl}
+              initials={initials}
+              isOwnProfile={isOwnProfile}
+              isFriend={isFriend}
+              avatarUploading={avatarUploading}
+              onAvatarClick={() => {
+                const input = document.getElementById(
+                  "avatar-file-input"
+                ) as HTMLInputElement | null;
+                input?.click();
+              }}
+              onFollowToggle={handleFollowToggle}
+              visitedCountriesCount={visitedCountries.length}
+              articlesCount={articles.length}
+              onFollowersClick={() => setModalType("followers")}
+              onFollowingClick={() => setModalType("following")}
+              user={user}
+            />
+          </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
-                      {profile.displayName}
-                    </h1>
-                    <p className="text-gray-500">@{profile.nickname}</p>
-                    {isFriend && (
-                      <span className="inline-flex items-center gap-1 mt-2 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium">
-                        <svg
-                          className="w-4 h-4"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        Přátelé
-                      </span>
-                    )}
-                  </div>
-
-                  {!isOwnProfile && user && (
-                    <FollowButton
-                      userId={profile.id}
-                      isFollowing={profile.isFollowedByMe}
-                      onToggle={handleFollowToggle}
-                    />
-                  )}
-
-                  {isOwnProfile && (
-                    <Link
-                      href="/nastaveni"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-medium transition-colors"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      Nastavení
-                    </Link>
-                  )}
-                </div>
-
-                {profile.bio && (
-                  <p className="mt-4 text-gray-600">{profile.bio}</p>
-                )}
-
-                {/* Statistiky */}
-                <div className="flex flex-wrap gap-6 mt-6">
-                  <button
-                    onClick={() => setModalType("followers")}
-                    className="text-center px-3 py-2 rounded-lg cursor-pointer group"
-                  >
-                    <div className="text-xl font-bold text-gray-900 transition-colors duration-150 group-hover:text-gray-700">
-                      {profile.followersCount}
-                    </div>
-                    <div className="text-sm text-gray-500 transition-colors duration-150 group-hover:text-gray-700">
-                      Sledujících
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setModalType("following")}
-                    className="text-center px-3 py-2 rounded-lg cursor-pointer group"
-                  >
-                    <div className="text-xl font-bold text-gray-900 transition-colors duration-150 group-hover:text-gray-700">
-                      {profile.followingCount}
-                    </div>
-                    <div className="text-sm text-gray-500 transition-colors duration-150 group-hover:text-gray-700">
-                      Sleduji
-                    </div>
-                  </button>
-                  <div className="text-center px-3 py-2">
-                    <div className="text-xl font-bold text-emerald-600">
-                      {isOwnProfile
-                        ? visitedCountries.length
-                        : profile.countriesVisited}
-                    </div>
-                    <div className="text-sm text-gray-500">Zemí</div>
-                  </div>
-                  <div className="text-center px-3 py-2">
-                    <div className="text-xl font-bold text-gray-900">
-                      {isOwnProfile ? articles.length : profile.articlesWritten}
-                    </div>
-                    <div className="text-sm text-gray-500">Článků</div>
-                  </div>
-                </div>
-              </div>
+          {/* Tabs bar - pouze pro vlastní profil */}
+          {isOwnProfile && (
+            <div className="border-t border-slate-200 bg-slate-50/40">
+              <ProfileTabs activeTab={activeTab} onTabChange={handleTabChange} />
             </div>
-          </CardContent>
-        </Card>
+          )}
+        </div>
+
+        <input
+          id="avatar-file-input"
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleAvatarUpload}
+        />
 
         {/* VLASTNÍ PROFIL - zobrazení podle tabu */}
         {isOwnProfile && (
           <>
             {activeTab === "map" && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FiMap className="w-5 h-5" />
-                      Interaktivní mapa cest
-                    </CardTitle>
+              <div className="mt-6 space-y-6 pb-8">
+                <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <CardHeader className="p-4 sm:p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                        <FiMap className="w-5 h-5 text-emerald-600" aria-hidden="true" />
+                        Interaktivní mapa cest
+                      </CardTitle>
+                      <span className="text-sm text-slate-600 whitespace-nowrap">
+                        Objeveno: {visitedCountries.length} / 195
+                      </span>
+                    </div>
+                    {/* Progress bar */}
+                    {visitedCountries.length > 0 && (
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-600 transition-all duration-300"
+                            style={{
+                              width: `${Math.min((visitedCountries.length / 195) * 100, 100)}%`,
+                            }}
+                            role="progressbar"
+                            aria-valuenow={visitedCountries.length}
+                            aria-valuemin={0}
+                            aria-valuemax={195}
+                            aria-label={`Navštíveno ${visitedCountries.length} z 195 zemí`}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-slate-700 whitespace-nowrap">
+                          {Math.round((visitedCountries.length / 195) * 100)} %
+                        </span>
+                      </div>
+                    )}
                   </CardHeader>
-                  <CardContent>
-                    <DashboardPublicWorldMap
-                      userId={user!.uid}
-                      unvisitRequest={unvisitReq}
-                      onVisitedPreload={(list) => {
-                        setVisitedCountries(list);
-                        if (profile) {
-                          setProfile({
-                            ...profile,
-                            countriesVisited: list.length,
-                          });
-                        }
-                      }}
-                      onVisitSaved={async () => {
-                        try {
-                          const refreshed = await dbUtils.getVisitedCountries(
-                            user!.uid
-                          );
-                          setVisitedCountries(refreshed);
-                          if (profile) {
-                            setProfile({
-                              ...profile,
-                              countriesVisited: refreshed.length,
-                            });
-                          }
-                        } catch (e) {
-                          console.error(e);
-                        }
-                      }}
-                    />
+                  <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
+                    <div className="rounded-2xl overflow-hidden border border-slate-200">
+                      <div className="h-[320px] sm:h-[420px]">
+                        <DashboardPublicWorldMap
+                          userId={user!.uid}
+                          unvisitRequest={unvisitReq}
+                          onVisitedPreload={(list) => {
+                            setVisitedCountries(list);
+                            if (profile) {
+                              setProfile({
+                                ...profile,
+                                countriesVisited: list.length,
+                              });
+                            }
+                          }}
+                          onVisitSaved={async () => {
+                            try {
+                              const refreshed = await dbUtils.getVisitedCountries(
+                                user!.uid
+                              );
+                              setVisitedCountries(refreshed);
+                              if (profile) {
+                                setProfile({
+                                  ...profile,
+                                  countriesVisited: refreshed.length,
+                                });
+                              }
+                            } catch (e) {
+                              console.error(e);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="rounded-2xl border border-slate-200 shadow-sm">
                   <CardHeader>
                     <CardTitle>
                       Navštívené země ({visitedCountries.length})
@@ -673,7 +577,7 @@ export default function ProfilePage({
                         ))}
                       </div>
                     ) : (
-                      <p className="text-gray-500 text-center py-4">
+                      <p className="text-slate-500 text-center py-4">
                         Zatím jste nenavštívili žádnou zemi. Klikněte na mapu
                         pro přidání!
                       </p>
@@ -684,107 +588,30 @@ export default function ProfilePage({
             )}
 
             {activeTab === "articles" && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <FiFileText className="w-5 h-5" />
-                      Moje články ({articles.length})
-                    </CardTitle>
-                    <Link
-                      href="/clanek/novy"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors text-sm"
-                    >
-                      + Nový článek
-                    </Link>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {articles.length > 0 ? (
-                    <div className="space-y-3">
-                      {articles.map((article) => (
-                        <Link
-                          key={article.id}
-                          href={
-                            article.status === "draft"
-                              ? `/dashboard/articles/${article.id}/edit`
-                              : article.slug
-                              ? `/clanek/${article.slug}`
-                              : `/dashboard/articles/${article.id}/edit`
-                          }
-                          className="flex items-center gap-4 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                          {article.main_image_url ? (
-                            <div className="w-20 h-[60px] flex-shrink-0 rounded overflow-hidden bg-gray-200">
-                              <Image
-                                src={article.main_image_url}
-                                alt={article.main_image_alt || article.title}
-                                width={80}
-                                height={60}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          ) : (
-                            <div className="w-20 h-[60px] flex-shrink-0 bg-gray-200 rounded flex items-center justify-center">
-                              <FiFileText className="w-8 h-8 text-gray-400" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-gray-900 truncate">
-                              {article.title}
-                            </h3>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span
-                                className={`text-xs px-2 py-0.5 rounded-full ${
-                                  article.status === "approved"
-                                    ? "bg-green-100 text-green-700"
-                                    : article.status === "pending"
-                                    ? "bg-yellow-100 text-yellow-700"
-                                    : article.status === "rejected"
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-gray-100 text-gray-600"
-                                }`}
-                              >
-                                {article.status === "approved"
-                                  ? "Schváleno"
-                                  : article.status === "pending"
-                                  ? "Čeká na schválení"
-                                  : article.status === "rejected"
-                                  ? "Zamítnuto"
-                                  : "Koncept"}
-                              </span>
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <p className="mb-4">Zatím nemáte žádné články.</p>
-                      <Link
-                        href="/clanek/novy"
-                        className="text-emerald-600 hover:text-emerald-700 font-medium"
-                      >
-                        Napsat první článek →
-                      </Link>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <div className="mt-6 pb-8">
+                <ArticleList
+                  articles={articles}
+                  onDelete={(articleId, articleTitle) =>
+                    setDeleteModal({ articleId, articleTitle })
+                  }
+                />
+              </div>
             )}
 
             {activeTab === "badges" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FiAward className="w-5 h-5" />
-                    Odznaky
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <BadgesGrid badges={badges} />
-                </CardContent>
-              </Card>
+              <div className="mt-6 pb-8">
+                <Card className="rounded-2xl border border-slate-200 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FiAward className="w-5 h-5 text-emerald-600" aria-hidden="true" />
+                      Odznaky
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <BadgesGrid badges={badges} />
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </>
         )}
@@ -794,7 +621,7 @@ export default function ProfilePage({
           <>
             {/* Navštívené země */}
             {visitedCountries.length > 0 && (
-              <Card className="mb-6">
+              <Card className="mb-6 rounded-2xl border border-slate-200 shadow-sm">
                 <CardHeader>
                   <CardTitle>
                     Navštívené země ({visitedCountries.length})
@@ -820,7 +647,7 @@ export default function ProfilePage({
 
             {/* Články */}
             {articles.length > 0 && (
-              <Card>
+              <Card className="mb-8 rounded-2xl border border-slate-200 shadow-sm">
                 <CardHeader>
                   <CardTitle>Články ({articles.length})</CardTitle>
                 </CardHeader>
@@ -830,11 +657,11 @@ export default function ProfilePage({
                       <Link
                         key={article.id}
                         href={`/clanek/${article.slug}`}
-                        className="group"
+                        className="group cursor-pointer"
                       >
-                        <div className="bg-white border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-md hover:bg-white transition-all duration-200">
                           {article.main_image_url ? (
-                            <div className="relative w-full h-40 bg-gray-200">
+                            <div className="relative w-full h-40 bg-slate-200">
                               <Image
                                 src={article.main_image_url}
                                 alt={article.main_image_alt || article.title}
@@ -844,8 +671,8 @@ export default function ProfilePage({
                               />
                             </div>
                           ) : (
-                            <div className="w-full h-40 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                              <FiFileText className="w-12 h-12 text-gray-400" />
+                            <div className="w-full h-40 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                              <FiFileText className="w-12 h-12 text-slate-400" />
                             </div>
                           )}
                           <div className="p-4">
@@ -862,8 +689,8 @@ export default function ProfilePage({
             )}
 
             {articles.length === 0 && visitedCountries.length === 0 && (
-              <Card>
-                <CardContent className="py-12 text-center text-gray-500">
+              <Card className="mb-8 rounded-2xl border border-slate-200 shadow-sm">
+                <CardContent className="py-12 text-center text-slate-500">
                   <span className="text-6xl mb-4 block">🌍</span>
                   <p>Tento uživatel zatím nemá žádný cestovatelský obsah.</p>
                 </CardContent>
@@ -883,6 +710,36 @@ export default function ProfilePage({
         currentUserId={user?.uid}
         onFollowChange={handleModalFollowChange}
       />
+
+      {/* Modal pro potvrzení smazání článku */}
+      {deleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Smazat článek?
+            </h2>
+            <p className="text-slate-600 mb-6">
+              Opravdu chcete smazat článek <strong>"{deleteModal.articleTitle}"</strong>? Tato akce je nevratná.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteModal(null)}
+                disabled={deleting}
+                className="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Zrušit
+              </button>
+              <button
+                onClick={handleDeleteArticle}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleting ? "Mažu..." : "Smazat"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

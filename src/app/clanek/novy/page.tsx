@@ -9,6 +9,16 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/Card";
 import Lottie from "lottie-react";
 import { slugifyNickname } from "@/utils/slugify";
+import { getAccessToken } from "@/lib/articles/authUtils";
+import {
+  uploadImages,
+  setArticleCover,
+  addPhotoToGallery,
+  type UploadedPhoto,
+} from "@/lib/articles/imageUtils";
+import { ArticleFormFields } from "@/components/articles/ArticleFormFields";
+import { ImageUploadButton } from "@/components/articles/ImageUploadButton";
+import { ArticleImageGallery } from "@/components/articles/ArticleImageGallery";
 
 export default function NewArticlePage() {
   const router = useRouter();
@@ -82,37 +92,6 @@ export default function NewArticlePage() {
     };
   }, [galleryFiles]);
 
-  function getAccessTokenFromStorage(): string | null {
-    // Supabase v2 ukládá tokeny do klíčů typu "sb-xxxxx-auth-token" – nemusí obsahovat řetězec "supabase"
-    try {
-      const keys = Object.keys(localStorage);
-      for (const key of keys) {
-        const lower = key.toLowerCase();
-        const looksSupabase =
-          lower.includes("supabase") || lower.startsWith("sb-");
-        const looksAuth =
-          lower.includes("auth") ||
-          lower.includes("session") ||
-          lower.includes("token");
-        if (!looksSupabase || !looksAuth) continue;
-        try {
-          const value = localStorage.getItem(key);
-          if (!value) continue;
-          const parsed = JSON.parse(value);
-          if (parsed?.access_token) return parsed.access_token;
-          if (parsed?.currentSession?.access_token)
-            return parsed.currentSession.access_token;
-          if (parsed?.session?.access_token) return parsed.session.access_token;
-          if (parsed?.accessToken) return parsed.accessToken;
-        } catch {
-          // Ignorujeme chyby parsování
-        }
-      }
-    } catch (e) {
-      console.warn("[new-article] Error reading localStorage:", e);
-    }
-    return null;
-  }
 
   async function onSubmit(
     e: React.SyntheticEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>,
@@ -139,52 +118,10 @@ export default function NewArticlePage() {
     try {
       console.log("[new-article] getting session...");
 
-      // Zkusíme získat token z localStorage (rychlejší a spolehlivější)
-      let accessToken: string | null = getAccessTokenFromStorage();
-      console.log("[new-article] token from storage:", !!accessToken);
-
-      // Pokud není v localStorage, zkusíme getSession s timeoutem
-      if (!accessToken) {
-        try {
-          const sessionResult = await Promise.race([
-            supabase.auth.getSession(),
-            new Promise<{ data: { session: any } }>((resolve) =>
-              setTimeout(
-                () => resolve({ data: { session: null } } as any),
-                3000
-              )
-            ),
-          ]);
-          accessToken = sessionResult?.data?.session?.access_token || null;
-          console.log("[new-article] token from getSession:", !!accessToken);
-        } catch (err) {
-          console.warn("[new-article] getSession error:", err);
-        }
-      }
-
-      // Pokud stále nemáme token, zkusíme getUser
-      if (!accessToken) {
-        try {
-          const userResult = await Promise.race([
-            supabase.auth.getUser(),
-            new Promise<{ data: { user: any } }>((resolve) =>
-              setTimeout(() => resolve({ data: { user: null } } as any), 3000)
-            ),
-          ]);
-          // getUser nevrací token přímo, ale můžeme zkusit znovu getSession
-          if (userResult?.data?.user) {
-            const sessionResult = await supabase.auth.getSession();
-            accessToken = sessionResult?.data?.session?.access_token || null;
-            console.log("[new-article] token after getUser:", !!accessToken);
-          }
-        } catch (err) {
-          console.warn("[new-article] getUser error:", err);
-        }
-      }
-
+      // Získat token
+      const accessToken = await getAccessToken();
       console.log("[new-article] final token:", !!accessToken);
 
-      // Pokud není token, zkusíme ještě jednou získat session
       if (!accessToken) {
         setSaving(false);
         setError(
@@ -208,33 +145,9 @@ export default function NewArticlePage() {
           }
         | {} = {};
       
-      let uploadedPhotos: Array<{ url: string; public_id: string; width?: number; height?: number }> = [];
-      
       // Nahrát všechny obrázky z galerie
       if (galleryFiles.length > 0) {
-        for (const galleryFile of galleryFiles) {
-          const form = new FormData();
-          form.append("file", galleryFile);
-          form.append("folder", "destinote_articles");
-          const uploadRes = await fetch("/api/images/upload", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: form,
-          });
-          if (!uploadRes.ok) {
-            const d = await uploadRes.json().catch(() => ({}));
-            throw new Error(d.error || "Nahrání obrázku selhalo");
-          }
-          const uploadData = await uploadRes.json();
-          uploadedPhotos.push({
-            url: uploadData.url,
-            public_id: uploadData.public_id,
-            width: uploadData.width,
-            height: uploadData.height,
-          });
-        }
+        const uploadedPhotos = await uploadImages(galleryFiles, accessToken, user?.uid);
         
         // Pokud je vybrán cover obrázek z galerie, použijeme ho
         if (selectedCoverIndex !== null && uploadedPhotos[selectedCoverIndex]) {
@@ -257,6 +170,9 @@ export default function NewArticlePage() {
             ...(coverAlt ? { main_image_alt: coverAlt } : {}),
           };
         }
+        
+        // Uložit uploadedPhotos pro pozdější použití
+        (window as any).__uploadedPhotos = uploadedPhotos;
       }
       console.log(
         "[new-article] Sending request to /api/articles with payload:",
@@ -356,32 +272,15 @@ export default function NewArticlePage() {
       );
 
       // Přidat všechny nahráné obrázky do galerie (kromě cover obrázku)
-      if (uploadedPhotos.length > 0) {
+      const uploadedPhotos = (window as any).__uploadedPhotos as UploadedPhoto[] | undefined;
+      if (uploadedPhotos && uploadedPhotos.length > 0) {
         const coverIndex = selectedCoverIndex !== null ? selectedCoverIndex : 0;
         for (let i = 0; i < uploadedPhotos.length; i++) {
           // Přeskočit cover obrázek, ten už je v článku
           if (i === coverIndex) continue;
-          
-          const photo = uploadedPhotos[i];
-          const photoRes = await fetch(`/api/articles/${data.id}/photos`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({
-              url: photo.url,
-              public_id: photo.public_id,
-              width: photo.width || null,
-              height: photo.height || null,
-              alt: null,
-            }),
-          });
-          
-          if (!photoRes.ok) {
-            console.warn(`[new-article] Failed to add photo ${i} to gallery`);
-          }
+          await addPhotoToGallery(data.id, uploadedPhotos[i], accessToken, user?.uid);
         }
+        delete (window as any).__uploadedPhotos;
       }
 
       // Pokud uživatel klikl na "Odeslat ke schválení", změníme status na pending
@@ -616,68 +515,21 @@ export default function NewArticlePage() {
           }}
           className="space-y-4"
         >
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Název <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 px-3 py-2"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Např. Můj výlet do Peru"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Perex (volitelné)
-            </label>
-            <input
-              type="text"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 px-3 py-2"
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              placeholder="Krátké uvedení článku"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Země (volitelné)
-            </label>
-            <select
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 px-3 py-2 bg-white"
-              value={selectedCountryId}
-              onChange={(e) => setSelectedCountryId(e.target.value)}
-            >
-              <option value="">-- Vyberte zemi (volitelné) --</option>
-              {loadingCountries ? (
-                <option disabled>Načítání zemí...</option>
-              ) : (
-                countries.map((country) => (
-                  <option key={country.id} value={country.id}>
-                    {country.name}
-                  </option>
-                ))
-              )}
-            </select>
-            <p className="mt-1 text-xs text-gray-500">
-              Vyberte zemi, o které článek pojednává. Pokud článek není o konkrétní zemi, můžete toto pole ponechat prázdné.
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Obsah <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 px-3 py-2"
-              rows={10}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Text článku..."
-            />
-          </div>
+          <ArticleFormFields
+            title={title}
+            summary={summary}
+            content={content}
+            selectedCountryId={selectedCountryId}
+            coverAlt={coverAlt}
+            countries={countries}
+            loadingCountries={loadingCountries}
+            isPending={false}
+            onTitleChange={setTitle}
+            onSummaryChange={setSummary}
+            onContentChange={setContent}
+            onCountryChange={setSelectedCountryId}
+            onCoverAltChange={setCoverAlt}
+          />
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Obrázky (volitelné)
@@ -686,115 +538,37 @@ export default function NewArticlePage() {
               Nahrajte jeden nebo více obrázků. Kliknutím na obrázek vyberete hlavní fotografii (označena zeleným rámečkem).
             </p>
             
-            {/* Tlačítko pro nahrání obrázků */}
-            <div className="mb-4">
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length > 0) {
-                      setGalleryFiles((prev) => [...prev, ...files]);
-                      // Pokud je to první obrázek, automaticky ho vybereme jako cover
-                      if (galleryFiles.length === 0 && selectedCoverIndex === null) {
-                        setSelectedCoverIndex(0);
-                      }
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = "image/*";
-                    input.multiple = true;
-                    input.onchange = (e) => {
-                      const files = Array.from((e.target as HTMLInputElement).files || []);
-                      if (files.length > 0) {
-                        setGalleryFiles((prev) => {
-                          const newFiles = [...prev, ...files];
-                          // Pokud je to první obrázek, automaticky ho vybereme jako cover
-                          if (prev.length === 0 && selectedCoverIndex === null) {
-                            setSelectedCoverIndex(0);
-                          }
-                          return newFiles;
-                        });
-                      }
-                    };
-                    input.click();
-                  }}
-                >
-                  Přidat obrázky
-                </Button>
-              </label>
-            </div>
+            <ImageUploadButton
+              onFilesSelect={(files) => {
+                setGalleryFiles((prev) => {
+                  const newFiles = [...prev, ...files];
+                  // Pokud je to první obrázek, automaticky ho vybereme jako cover
+                  if (prev.length === 0 && selectedCoverIndex === null) {
+                    setSelectedCoverIndex(0);
+                  }
+                  return newFiles;
+                });
+              }}
+              disabled={saving || submitting}
+            />
 
-            {/* Galerie náhledů obrázků */}
-            {galleryPreviews.length > 0 && (
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">
-                  Nahrané obrázky (klikněte pro výběr hlavní fotografie):
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {galleryPreviews.map((preview, index) => {
-                    const isCover = selectedCoverIndex === index;
-                    return (
-                      <div
-                        key={index}
-                        className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
-                          isCover
-                            ? "border-green-500 ring-2 ring-green-200"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                        onClick={() => setSelectedCoverIndex(index)}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={preview.preview}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-32 object-cover"
-                        />
-                        {isCover && (
-                          <div className="absolute top-1 left-1 bg-green-500 text-white text-xs px-2 py-1 rounded">
-                            Hlavní fotografie
-                          </div>
-                        )}
-                        <div className="absolute top-1 right-1">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setGalleryFiles((prev) => {
-                                const newFiles = prev.filter((_, i) => i !== index);
-                                // Pokud byl smazán cover obrázek, vybereme první zbývající
-                                if (selectedCoverIndex === index) {
-                                  setSelectedCoverIndex(newFiles.length > 0 ? 0 : null);
-                                } else if (selectedCoverIndex !== null && selectedCoverIndex > index) {
-                                  setSelectedCoverIndex(selectedCoverIndex - 1);
-                                }
-                                return newFiles;
-                              });
-                            }}
-                            className="text-xs bg-white"
-                          >
-                            ×
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
+            <ArticleImageGallery
+              galleryPreviews={galleryPreviews}
+              selectedCoverIndex={selectedCoverIndex}
+              onCoverFromPreview={(index) => setSelectedCoverIndex(index)}
+              onRemovePreview={(index) => {
+                setGalleryFiles((prev) => {
+                  const newFiles = prev.filter((_, i) => i !== index);
+                  // Pokud byl smazán cover obrázek, vybereme první zbývající
+                  if (selectedCoverIndex === index) {
+                    setSelectedCoverIndex(newFiles.length > 0 ? 0 : null);
+                  } else if (selectedCoverIndex !== null && selectedCoverIndex > index) {
+                    setSelectedCoverIndex(selectedCoverIndex - 1);
+                  }
+                  return newFiles;
+                });
+              }}
+            />
             <input
               type="text"
               className="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 px-3 py-2 text-sm"

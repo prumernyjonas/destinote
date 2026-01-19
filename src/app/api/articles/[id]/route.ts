@@ -30,7 +30,7 @@ export async function GET(
   const { data, error } = await admin
     .from("articles")
     .select(
-      "id, author_id, title, summary, content, status, created_at, updated_at, published_at, main_image_url, main_image_public_id, main_image_width, main_image_height, main_image_alt"
+      "id, author_id, title, summary, content, status, created_at, updated_at, published_at, main_image_url, main_image_public_id, main_image_width, main_image_height, main_image_alt, destination"
     )
     .eq("id", id)
     .maybeSingle();
@@ -211,6 +211,72 @@ export async function PUT(
       .eq("id", id);
     if (upErr) {
       return new Response(JSON.stringify({ error: upErr.message }), {
+        status: 500,
+      });
+    }
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  } catch (err: any) {
+    const message = err?.message || "Internal error";
+    return new Response(JSON.stringify({ error: message }), { status: 500 });
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    // Získáme userId z různých zdrojů (header, session, Bearer token)
+    const userId = await getUserIdFromRequest(req);
+    
+    if (!userId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+      });
+    }
+
+    const admin = createAdminSupabaseClient();
+
+    // Load article for permission check
+    const { data: art, error: artErr } = await admin
+      .from("articles")
+      .select("author_id, status")
+      .eq("id", id)
+      .maybeSingle();
+    if (artErr) {
+      return new Response(JSON.stringify({ error: artErr.message }), {
+        status: 500,
+      });
+    }
+    if (!art) {
+      return new Response(JSON.stringify({ error: "Not found" }), {
+        status: 404,
+      });
+    }
+    const role = await getUserRole(userId);
+    const owner = art.author_id === userId;
+    if (!owner && !isAdmin(role)) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+      });
+    }
+
+    // Smazat článek z databáze (hard delete)
+    // Nejdřív smažeme související záznamy (komentáře, fotky)
+    await admin.from("article_photos").delete().eq("article_id", id);
+    await admin.from("comments").delete().eq("article_id", id);
+    
+    // Pak smažeme samotný článek
+    const { error: delErr } = await admin
+      .from("articles")
+      .delete()
+      .eq("id", id);
+    if (delErr) {
+      return new Response(JSON.stringify({ error: delErr.message }), {
         status: 500,
       });
     }

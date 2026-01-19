@@ -570,14 +570,6 @@ export default function DashboardPublicWorldMap({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="text-sm md:text-base font-medium text-slate-800">
-        Objeveno:{" "}
-        <span className="text-emerald-600 font-semibold">{percent} %</span> zemí
-        světa{" "}
-        <span className="text-slate-500">
-          ({visitedCount}/{totalCountries})
-        </span>
-      </div>
       <div
         ref={containerRef}
         className="w-full h-150 min-h-115 rounded-xl overflow-hidden border border-slate-200 shadow-sm"
