@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Poppins } from "next/font/google";
-import localFont from "next/font/local";
 import "@/styles/globals.css";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ToastProvider } from "@/components/ui/Toast";
 import Navbar from "@/components/layout/Navbar";
 import { Suspense } from "react";
+import { marble } from "@/lib/fonts";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,14 +20,6 @@ const geistMono = Geist_Mono({
 const poppins = Poppins({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],
-});
-
-export const marble = localFont({
-  src: "../fonts/Marble-Regular.woff2",
-  variable: "--font-marble",
-  display: "swap",
-  weight: "400",
-  fallback: ["Arial", "Helvetica", "sans-serif"],
 });
 
 export const metadata: Metadata = {
@@ -46,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="cs">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${poppins.className} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${marble.variable} ${poppins.className} antialiased`}
       >
         <ToastProvider>
           <AuthProvider>

@@ -22,7 +22,7 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase/client";
-import { marble } from "@/app/layout";
+import { marble } from "@/lib/fonts";
 
 function getInitial(user: { displayName?: string; email?: string } | null) {
   return (
