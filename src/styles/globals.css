@@ -1,15 +1,6 @@
 @import "tailwindcss";
 @import "maplibre-gl/dist/maplibre-gl.css";
 @import "flag-icons/css/flag-icons.min.css";
-
-@font-face {
-  font-family: "Marble";
-  src: url("/fonts/Marble Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
 :root {
   --background: #ffffff;
   --foreground: #171717;
