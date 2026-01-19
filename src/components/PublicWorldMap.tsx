@@ -340,6 +340,7 @@ export default function PublicWorldMap({
         const flag = iso2
           ? `<span class="fi fi-${iso2.toLowerCase()}" style="font-size:20px"></span>`
           : "";
+        const communityUrl = `/komunita?country=${countrySlug}`;
         const html = `
           <div style="min-width:220px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
@@ -347,7 +348,7 @@ export default function PublicWorldMap({
               <div style="font-weight:700;font-size:16px">${safeName}</div>
             </div>
             <a href="${url}" style="display:block;color:#16a34a;font-weight:700;text-decoration:none;margin:8px 0">ZOBRAZIT DETAIL ZEMĚ ▸</a>
-            <a href="/komunita" style="display:block;color:#16a34a;font-weight:700;text-decoration:none">CESTOPISY A REPORTÁŽE ▸</a>
+            <a href="${communityUrl}" style="display:block;color:#16a34a;font-weight:700;text-decoration:none">CESTOPISY A REPORTÁŽE ▸</a>
           </div>`;
         popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
       };

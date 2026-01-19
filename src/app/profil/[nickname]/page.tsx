@@ -62,6 +62,7 @@ export default function ProfilePage({
   >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showTimeoutError, setShowTimeoutError] = useState(false);
   const [modalType, setModalType] = useState<"followers" | "following" | null>(
     null
   );
@@ -164,6 +165,18 @@ export default function ProfilePage({
       setLoading(true);
       setError(null);
 
+      // Timeout pro zajištění, že se loading vždy ukončí
+      const timeoutId = setTimeout(() => {
+        if (isLoadingRef.current) {
+          console.warn("[ProfilePage] Timeout při načítání profilu");
+          setLoading(false);
+          isLoadingRef.current = false;
+          if (!profile) {
+            setError("Načítání profilu trvalo příliš dlouho. Zkuste to prosím znovu.");
+          }
+        }
+      }, 15000); // 15 sekund timeout
+
       try {
         // Získat token pro autorizaci (aby API vědělo kdo se ptá)
         const accessToken = getAccessToken();
@@ -171,8 +184,25 @@ export default function ProfilePage({
           ? { Authorization: `Bearer ${accessToken}` }
           : {};
 
-        // Načíst profil
-        const profileRes = await fetch(`/api/users/${nickname}`, { headers });
+        // Načíst profil s timeoutem
+        const controller = new AbortController();
+        const fetchTimeout = setTimeout(() => controller.abort(), 10000); // 10 sekund timeout pro fetch
+
+        let profileRes: Response;
+        try {
+          profileRes = await fetch(`/api/users/${nickname}`, { 
+            headers,
+            signal: controller.signal,
+          });
+          clearTimeout(fetchTimeout);
+        } catch (fetchErr: any) {
+          clearTimeout(fetchTimeout);
+          if (fetchErr.name === "AbortError") {
+            throw new Error("Načítání profilu trvalo příliš dlouho");
+          }
+          throw fetchErr;
+        }
+
         if (!profileRes.ok) {
           if (profileRes.status === 404) {
             throw new Error("Uživatel nenalezen");
@@ -184,46 +214,73 @@ export default function ProfilePage({
         setProfile(profileData.data);
 
         const userId = profileData.data.id;
+        // Zkontrolovat, jestli je to vlastní profil (i když user může být null)
         const isOwn = user?.uid === userId;
 
-        // Načíst články - pro vlastní profil všechny, pro cizí jen approved
+        // Načíst články - pro vlastní profil všechny, pro cizí jen approved (neblokující)
         const articlesUrl = isOwn
           ? `/api/articles?mine=true&userId=${userId}`
           : `/api/articles?authorId=${userId}&status=approved`;
-        const articlesRes = await fetch(articlesUrl);
-        if (articlesRes.ok) {
-          const articlesData = await articlesRes.json();
-          setArticles(articlesData.items || []);
-        }
+        fetch(articlesUrl)
+          .then((res) => res.ok ? res.json() : null)
+          .then((articlesData) => {
+            if (articlesData?.items) {
+              setArticles(articlesData.items);
+            }
+          })
+          .catch((err) => console.error("[ProfilePage] Chyba při načítání článků:", err));
 
-        // Načíst navštívené země
-        const visitedRes = await fetch(`/api/visited?userId=${userId}`);
-        if (visitedRes.ok) {
-          const visitedData = await visitedRes.json();
-          setVisitedCountries(
-            (visitedData.data || []).map((c: any) => ({
-              iso2: c.iso2,
-              name: c.name,
-              id: c.id || c.country_id,
-            }))
-          );
-        }
+        // Načíst navštívené země (neblokující)
+        fetch(`/api/visited?userId=${userId}`)
+          .then((res) => res.ok ? res.json() : null)
+          .then((visitedData) => {
+            if (visitedData?.data) {
+              setVisitedCountries(
+                visitedData.data.map((c: any) => ({
+                  iso2: c.iso2,
+                  name: c.name,
+                  id: c.id || c.country_id,
+                }))
+              );
+            }
+          })
+          .catch((err) => console.error("[ProfilePage] Chyba při načítání zemí:", err));
 
-        // Pro vlastní profil načíst i odznaky
+        // Pro vlastní profil načíst i odznaky (neblokující)
         if (isOwn) {
-          const badgesData = await dbUtils.getBadges(userId);
-          setBadges(Array.isArray(badgesData) ? badgesData : []);
+          dbUtils.getBadges(userId)
+            .then((badgesData) => {
+              setBadges(Array.isArray(badgesData) ? badgesData : []);
+            })
+            .catch((err) => console.error("[ProfilePage] Chyba při načítání odznaků:", err));
         }
       } catch (err: any) {
+        console.error("[ProfilePage] Chyba při načítání profilu:", err);
         setError(err.message || "Nastala chyba");
+        setShowTimeoutError(false); // Reset timeout error při chybě
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
         isLoadingRef.current = false;
+        setShowTimeoutError(false); // Reset timeout error po dokončení
       }
     }
 
-    loadProfile();
-  }, [nickname, user?.uid]);
+    // Načíst profil i když user není načtený (pro cizí profily)
+    // Pouze počkat na user, pokud je to vlastní profil (pro správné zobrazení)
+    if (!user && authLoading) {
+      // Počkat max 3 sekundy na user, pak načíst profil i bez něj
+      const userTimeout = setTimeout(() => {
+        if (!user && authLoading) {
+          console.log("[ProfilePage] User se nenačetl, načítám profil bez user objektu");
+          loadProfile();
+        }
+      }, 3000);
+      return () => clearTimeout(userTimeout);
+    } else {
+      loadProfile();
+    }
+  }, [nickname, user?.uid, authLoading]);
 
   // Callback pro hlavní FollowButton (na cizím profilu)
   const handleFollowToggle = (newState: boolean) => {
@@ -322,7 +379,58 @@ export default function ProfilePage({
     }
   };
 
-  if (loading || authLoading) {
+  // Timeout pro loading - po 10 sekundách zobrazit error
+  useEffect(() => {
+    if (loading && !profile) {
+      const timeout = setTimeout(() => {
+        if (loading && !profile) {
+          console.warn("[ProfilePage] Timeout - zobrazuji error");
+          setShowTimeoutError(true);
+          setLoading(false);
+        }
+      }, 10000);
+      return () => clearTimeout(timeout);
+    } else {
+      setShowTimeoutError(false);
+    }
+  }, [loading, profile]);
+
+  // Timeout pro authLoading - po 5 sekundách pokračovat i bez user objektu
+  useEffect(() => {
+    if (!profile && authLoading && !user) {
+      const timeout = setTimeout(() => {
+        if (!profile && authLoading && !user) {
+          console.warn("[ProfilePage] authLoading timeout - pokračuji bez user objektu");
+          // Nechat pokračovat - profil se může načíst i bez user objektu
+        }
+      }, 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, [profile, authLoading, user]);
+
+  // Zobrazit loading pouze pokud nemáme profil a stále načítáme
+  // Pokud už máme profil, zobrazit ho i když se ještě načítají další data
+  if (showTimeoutError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md mx-4">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Chyba při načítání</h1>
+          <p className="text-gray-600 mb-4">Načítání profilu trvalo příliš dlouho.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+          >
+            Obnovit stránku
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Zobrazit loading pouze pokud nemáme profil a stále načítáme
+  // NENECHAT blokovat authLoading - pokud máme profil, zobrazit ho
+  // Zobrazit loading pouze pokud opravdu načítáme profil (loading) a nemáme ho
+  if (!profile && (loading || (authLoading && !user))) {
     return <LoadingSpinner text="Načítání profilu..." />;
   }
 
@@ -419,9 +527,9 @@ export default function ProfilePage({
           <>
             {activeTab === "map" && (
               <div className="mt-6 space-y-6 pb-8">
-                <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                  <CardHeader className="p-4 sm:p-6">
-                    <div className="flex items-center justify-between mb-3">
+                <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[600px] flex flex-col">
+                  <CardHeader className="px-6 pt-6">
+                    <div className="flex items-center justify-between">
                       <CardTitle className="text-lg font-semibold flex items-center gap-2">
                         <FiMap className="w-5 h-5 text-emerald-600" aria-hidden="true" />
                         Interaktivní mapa cest
@@ -430,9 +538,11 @@ export default function ProfilePage({
                         Objeveno: {visitedCountries.length} / 195
                       </span>
                     </div>
+                  </CardHeader>
+                  <CardContent className="px-6 pb-6 flex-1 flex flex-col">
                     {/* Progress bar */}
                     {visitedCountries.length > 0 && (
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 mb-4">
                         <div className="flex-1 h-2.5 bg-slate-200 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-emerald-600 transition-all duration-300"
@@ -451,10 +561,8 @@ export default function ProfilePage({
                         </span>
                       </div>
                     )}
-                  </CardHeader>
-                  <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
-                    <div className="rounded-2xl overflow-hidden border border-slate-200">
-                      <div className="h-[320px] sm:h-[420px]">
+                    <div className="rounded-2xl overflow-hidden border border-slate-200 flex-1 min-h-0">
+                      <div className="h-full min-h-[320px] sm:min-h-[420px]">
                         <DashboardPublicWorldMap
                           userId={user!.uid}
                           unvisitRequest={unvisitReq}
@@ -541,14 +649,14 @@ export default function ProfilePage({
 
             {activeTab === "badges" && (
               <div className="mt-6 pb-8">
-                <Card className="rounded-2xl border border-slate-200 shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                <Card className="rounded-2xl border border-slate-200 shadow-sm min-h-[600px] flex flex-col">
+                  <CardHeader className="px-6 pt-6">
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
                       <FiAward className="w-5 h-5 text-emerald-600" aria-hidden="true" />
                       Odznaky
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="px-6 pb-6 flex-1">
                     <BadgesGrid badges={badges} />
                   </CardContent>
                 </Card>

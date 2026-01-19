@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -29,8 +29,20 @@ type Country = {
 
 type SortOption = "newest" | "oldest" | "popular";
 
+// Funkce pro slugifikaci názvu země
+function slugify(input: string): string {
+  return input
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export default function CommunityPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [tab, setTab] = useState<"feed" | "top" | "following" | "friends">(
     "feed"
   );
@@ -47,13 +59,33 @@ export default function CommunityPage() {
   const [countrySearchQuery, setCountrySearchQuery] = useState("");
   const countryDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Načíst zemi z URL parametru při načtení stránky
-  useEffect(() => {
-    const countryParam = searchParams.get("country");
-    if (countryParam) {
-      setSelectedCountry(decodeURIComponent(countryParam));
+  // Funkce pro aktualizaci URL parametru country (používá slug)
+  const updateCountryInUrl = (country: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (country) {
+      const countrySlug = slugify(country);
+      params.set("country", countrySlug);
+    } else {
+      params.delete("country");
     }
-  }, [searchParams]);
+    router.replace(`${pathname}?${params.toString()}`);
+  };
+
+  // Načíst zemi z URL parametru při načtení stránky (převést slug zpět na název)
+  useEffect(() => {
+    const countrySlug = searchParams.get("country");
+    if (countrySlug && countries.length > 0) {
+      // Najít zemi, která má stejný slug jako parametr v URL
+      const foundCountry = countries.find(
+        (country) => slugify(country.name) === countrySlug
+      );
+      if (foundCountry) {
+        setSelectedCountry(foundCountry.name);
+      }
+    } else if (!countrySlug) {
+      setSelectedCountry("");
+    }
+  }, [searchParams, countries]);
 
   // Načíst seznam zemí
   useEffect(() => {
@@ -245,6 +277,7 @@ export default function CommunityPage() {
                       type="button"
                       onClick={() => {
                         setSelectedCountry("");
+                        updateCountryInUrl("");
                         setCountryDropdownOpen(false);
                         setCountrySearchQuery("");
                       }}
@@ -263,6 +296,7 @@ export default function CommunityPage() {
                           type="button"
                           onClick={() => {
                             setSelectedCountry(country.name);
+                            updateCountryInUrl(country.name);
                             setCountryDropdownOpen(false);
                             setCountrySearchQuery("");
                           }}
@@ -315,7 +349,10 @@ export default function CommunityPage() {
                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm">
                   {selectedCountry}
                   <button
-                    onClick={() => setSelectedCountry("")}
+                    onClick={() => {
+                      setSelectedCountry("");
+                      updateCountryInUrl("");
+                    }}
                     className="hover:text-emerald-900 cursor-pointer"
                   >
                     ×

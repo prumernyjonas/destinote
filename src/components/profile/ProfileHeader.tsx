@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { PublicProfile } from "@/types/database";
 import { FollowButton } from "./FollowButton";
 import ProfileStatItem from "./ProfileStatItem";
+import AvatarLightbox from "./AvatarLightbox";
 
 interface ProfileHeaderProps {
   profile: PublicProfile;
@@ -32,32 +34,38 @@ export default function ProfileHeader({
   onFollowingClick,
   user,
 }: ProfileHeaderProps) {
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-      {/* Avatar - 64px */}
-      <div className="flex-shrink-0">
-        {avatarUrl && avatarUrl.trim() !== "" ? (
-          <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-white shadow-sm ring-2 ring-green-200">
-            <img
-              src={avatarUrl}
-              alt={profile.nickname || "Avatar"}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                // Pokud se obrázek nenačte, zobrazit inicial
-                e.currentTarget.style.display = "none";
-                const parent = e.currentTarget.parentElement;
-                if (parent) {
-                  parent.innerHTML = `<div class="h-16 w-16 rounded-full flex items-center justify-center bg-green-100 text-green-700 font-bold text-xl border-2 border-white shadow-sm ring-2 ring-green-200">${initials || "?"}</div>`;
-                }
-              }}
-            />
-          </div>
-        ) : (
-          <div className="h-16 w-16 rounded-full flex items-center justify-center bg-green-100 text-green-700 font-bold text-xl border-2 border-white shadow-sm ring-2 ring-green-200">
-            {initials || "?"}
-          </div>
-        )}
-      </div>
+    <>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        {/* Avatar - 64px */}
+        <div className="flex-shrink-0">
+          {avatarUrl && avatarUrl.trim() !== "" ? (
+            <div 
+              className="h-16 w-16 rounded-full overflow-hidden border-2 border-white shadow-sm ring-2 ring-green-200 cursor-pointer hover:ring-green-300 transition-all"
+              onClick={() => setIsLightboxOpen(true)}
+            >
+              <img
+                src={avatarUrl}
+                alt={profile.nickname || "Avatar"}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Pokud se obrázek nenačte, zobrazit inicial
+                  e.currentTarget.style.display = "none";
+                  const parent = e.currentTarget.parentElement;
+                  if (parent) {
+                    parent.innerHTML = `<div class="h-16 w-16 rounded-full flex items-center justify-center bg-green-100 text-green-700 font-bold text-xl border-2 border-white shadow-sm ring-2 ring-green-200">${initials || "?"}</div>`;
+                  }
+                }}
+              />
+            </div>
+          ) : (
+            <div className="h-16 w-16 rounded-full flex items-center justify-center bg-green-100 text-green-700 font-bold text-xl border-2 border-white shadow-sm ring-2 ring-green-200">
+              {initials || "?"}
+            </div>
+          )}
+        </div>
 
       {/* Info - kompaktnější layout */}
       <div className="flex-1 min-w-0">
@@ -157,6 +165,17 @@ export default function ProfileHeader({
         )}
       </div>
     </div>
+
+      {/* Avatar Lightbox */}
+      {avatarUrl && avatarUrl.trim() !== "" && (
+        <AvatarLightbox
+          imageUrl={avatarUrl}
+          alt={`Profilová fotka uživatele ${profile.nickname || profile.displayName}`}
+          isOpen={isLightboxOpen}
+          onClose={() => setIsLightboxOpen(false)}
+        />
+      )}
+    </>
   );
 }
 

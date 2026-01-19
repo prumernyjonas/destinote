@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import { supabase } from "@/lib/supabase/client";
 
 interface FollowButtonProps {
@@ -22,12 +24,19 @@ export function FollowButton({
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
   const [loading, setLoading] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const { user } = useAuth();
+  const toast = useToast();
 
   if (isOwnProfile) {
     return null;
   }
 
   const handleClick = async () => {
+    if (!user) {
+      toast.info("Tato funkce vyžaduje přihlášení. Přihlaste se prosím.");
+      return;
+    }
+
     setLoading(true);
     try {
       // Získat access token přímo z localStorage (Supabase ukládá session tam)
@@ -74,7 +83,7 @@ export function FollowButton({
       onToggle?.(newState);
     } catch (err: any) {
       console.error("Follow toggle error:", err);
-      alert(err.message || "Nastala chyba");
+      toast.error(err.message || "Nastala chyba");
     } finally {
       setLoading(false);
     }

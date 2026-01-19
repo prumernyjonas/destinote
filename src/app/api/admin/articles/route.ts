@@ -23,12 +23,17 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get("to") || undefined;
 
   const admin = createAdminSupabaseClient();
+  const limit = Math.min(Number(searchParams.get("limit") || 100), 500); // Max 500 pro bezpečnost
+  const offset = Math.max(Number(searchParams.get("offset") || 0), 0);
+  
   let query = admin
     .from("articles")
     .select(
       "id, author_id, title, status, created_at, updated_at, published_at, main_image_url, main_image_public_id, approved_by, summary, content, destination"
     )
-    .order("created_at", { ascending: false });
+    .is("deleted_at", null) // Filtrovat smazané články
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
 
   if (status) query = query.eq("status", status);
   if (author) query = query.eq("author_id", author);

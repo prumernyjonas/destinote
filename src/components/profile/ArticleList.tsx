@@ -24,11 +24,11 @@ interface ArticleListProps {
 
 export default function ArticleList({ articles, onDelete }: ArticleListProps) {
   return (
-    <Card className="rounded-2xl border border-slate-200 shadow-sm">
-      <CardHeader>
+    <Card className="rounded-2xl border border-slate-200 shadow-sm min-h-[600px] flex flex-col">
+      <CardHeader className="px-6 pt-6">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <FiFileText className="w-5 h-5" />
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <FiFileText className="w-5 h-5 text-emerald-600" aria-hidden="true" />
             Moje články ({articles.length})
           </CardTitle>
           <Link
@@ -41,7 +41,7 @@ export default function ArticleList({ articles, onDelete }: ArticleListProps) {
           </Link>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-6 pb-6 flex-1">
         {articles.length > 0 ? (
           <div className="space-y-3">
             {articles.map((article) => (

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import { FiCheckCircle } from "react-icons/fi";
 
 type Props = {
@@ -21,9 +22,11 @@ export default function VisitedButton({
   console.log(`[VisitedButton] 🎨 Render - ISO2: ${iso2}, countryName: ${countryName}, initialVisited: ${initialVisited}`);
   const [visited, setVisited] = useState(initialVisited);
   const [loading, setLoading] = useState(false);
+  const [actionType, setActionType] = useState<"adding" | "removing" | null>(null); // Typ akce během loading
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const toast = useToast();
   
   console.log(`[VisitedButton] 👤 User: ${user?.uid || 'not logged in'}, visited state: ${visited}, loading: ${loading}`);
 
@@ -87,8 +90,8 @@ export default function VisitedButton({
 
   const handleClick = async () => {
     if (!user) {
-      // Přesměrovat na login s next parametrem
-      window.location.href = `/prihlaseni?next=${encodeURIComponent(currentPath)}`;
+      // Zobrazit zprávu, že funkce vyžaduje přihlášení
+      toast.info("Tato funkce vyžaduje přihlášení. Přihlaste se prosím.");
       return;
     }
 
@@ -97,6 +100,9 @@ export default function VisitedButton({
 
     setLoading(true);
     const previousVisited = visited;
+    // Uložit informaci o tom, co se provádí (přidávání nebo odebírání)
+    // Pokud je navštívená, odebírám; pokud není, přidávám
+    setActionType(currentlyVisited ? "removing" : "adding");
     
     // Optimistic update
     setVisited(!currentlyVisited);
@@ -167,6 +173,7 @@ export default function VisitedButton({
       console.error("Chyba při označení země:", error);
     } finally {
       setLoading(false);
+      setActionType(null);
     }
   };
 
@@ -183,12 +190,12 @@ export default function VisitedButton({
     );
   }
 
-  // Pokud není přihlášený, zobrazit tlačítko pro přihlášení
+  // Pokud není přihlášený, zobrazit tlačítko s toast zprávou
   if (!user) {
     return (
       <button
         onClick={() => {
-          window.location.href = `/prihlaseni?next=${encodeURIComponent(currentPath)}`;
+          toast.info("Tato funkce vyžaduje přihlášení. Přihlaste se prosím.");
         }}
         className="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 bg-green-600 hover:bg-green-700 text-white focus:ring-green-500 px-4 py-2 text-sm cursor-pointer"
       >
@@ -207,7 +214,7 @@ export default function VisitedButton({
         className="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-sm bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 cursor-pointer"
       >
         <FiCheckCircle className="w-4 h-4 mr-2" />
-        {loading ? "Odebírám..." : "Navštíveno ✓"}
+        {loading ? (actionType === "adding" ? "Ukládám..." : "Odebírám...") : "Navštíveno ✓"}
       </button>
     );
   }
@@ -218,9 +225,9 @@ export default function VisitedButton({
       onClick={handleClick}
       disabled={loading}
       className="inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white focus:ring-green-500 cursor-pointer"
-    >
-      <FiCheckCircle className="w-4 h-4 mr-2" />
-      {loading ? "Ukládám..." : "Označit jako navštívené"}
-    </button>
+      >
+        <FiCheckCircle className="w-4 h-4 mr-2" />
+        {loading ? (actionType === "adding" ? "Ukládám..." : "Odebírám...") : "Označit jako navštívené"}
+      </button>
   );
 }

@@ -38,17 +38,39 @@ export async function GET(req: NextRequest) {
     const searchTerm = `%${query.trim()}%`;
     const admin = createAdminSupabaseClient();
 
-    // Vyhledávání článků - načteme více a filtrujeme na serveru (kvůli diakritice)
+    // Vyhledávání článků - použít ILIKE pro efektivnější dotaz
     const searchQuery = query.trim();
-    // Zkusíme najít nějaké výsledky i s diakritikou (pro rychlejší dotaz)
     const searchPattern = `%${searchQuery}%`;
-    const { data: allArticles, error: articlesError } = await admin
-      .from("articles")
-      .select("id, title, slug, status, created_at, content")
-      .eq("status", "approved")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(100); // Načteme více, pak filtrujeme
+    
+    let allArticles: any[] = [];
+    let articlesError: any = null;
+    
+    try {
+      // Timeout pomocí Promise.race
+      const queryPromise = admin
+        .from("articles")
+        .select("id, title, slug, status, created_at, content")
+        .eq("status", "approved")
+        .is("deleted_at", null)
+        .or(`title.ilike.${searchPattern},content.ilike.${searchPattern}`)
+        .order("created_at", { ascending: false })
+        .limit(50); // Snížit limit pro lepší výkon
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Search timeout")), 10000);
+      });
+      
+      const result = await Promise.race([queryPromise, timeoutPromise]);
+      allArticles = (result as any).data || [];
+      articlesError = (result as any).error;
+    } catch (err: any) {
+      if (err.message === "Search timeout") {
+        console.error("[search] Articles query timeout");
+        articlesError = { message: "Search timeout" };
+      } else {
+        articlesError = err;
+      }
+    }
 
     // Filtrujeme podle normalizovaného dotazu (bez diakritiky)
     const articles = (allArticles || []).filter((a: any) => {
@@ -121,13 +143,33 @@ export async function GET(req: NextRequest) {
       return snippet;
     };
 
-    // Vyhledávání zemí - načteme všechny a filtrujeme na serveru (kvůli diakritice)
-    // Databáze neignoruje diakritiku, takže musíme filtrovat na serveru
-    // Hledáme POUZE v českých názvech (je to česká stránka)
-    const { data: allCountriesData, error: countriesError } = await admin
-      .from("countries")
-      .select("id, name, name_cs, iso_code, continent, continent_slug, slug")
-      .limit(300); // Načteme více zemí, pak filtrujeme
+    // Vyhledávání zemí - použít ILIKE pro efektivnější dotaz
+    // Hledáme v českých názvech pomocí ILIKE
+    let allCountriesData: any[] = [];
+    let countriesError: any = null;
+    
+    try {
+      const queryPromise = admin
+        .from("countries")
+        .select("id, name, name_cs, iso_code, continent, continent_slug, slug")
+        .or(`name_cs.ilike.${searchPattern},name.ilike.${searchPattern}`)
+        .limit(50); // Snížit limit pro lepší výkon
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Search timeout")), 10000);
+      });
+      
+      const result = await Promise.race([queryPromise, timeoutPromise]);
+      allCountriesData = (result as any).data || [];
+      countriesError = (result as any).error;
+    } catch (err: any) {
+      if (err.message === "Search timeout") {
+        console.error("[search] Countries query timeout");
+        countriesError = { message: "Search timeout" };
+      } else {
+        countriesError = err;
+      }
+    }
 
     // Filtrujeme podle normalizovaného dotazu (bez diakritiky)
     // Hledáme POUZE v českých názvech

@@ -924,6 +924,16 @@ function translateCapital(capital: string): string {
   return CAPITAL_TRANSLATIONS[capital] || capital;
 }
 
+// Funkce pro slugifikaci názvu země
+function slugify(input: string): string {
+  return input
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 async function fetchCountryArticles(
   countryName: string,
   limit: number = 50
@@ -1173,7 +1183,7 @@ export default async function CountryGuide({
                     Cestopisy a články
                   </CardTitle>
                   <Link
-                    href={`/komunita?country=${encodeURIComponent(name)}`}
+                    href={`/komunita?country=${slugify(name)}`}
                     className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
                   >
                     Zobrazit všechny →
@@ -1406,7 +1416,7 @@ export default async function CountryGuide({
                   ))}
                   <div className="pt-2 border-t border-gray-200">
                     <Link
-                      href={`/komunita?country=${encodeURIComponent(name)}`}
+                      href={`/komunita?country=${slugify(name)}`}
                       className="text-sm text-emerald-600 hover:text-emerald-700 font-medium inline-flex items-center gap-1"
                     >
                       Zobrazit všechny →

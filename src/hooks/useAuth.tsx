@@ -40,21 +40,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // 1) Eager rehydratace z cache (okamžitě, bez čekání na síť)
         const cached = authUtils.getCachedUser();
         if (isMounted && cached) {
+          // Vždy zobrazit cached user, i když nemá nickname - UI musí fungovat
           setUser(cached);
           // UI může pokračovat bez čekání na síť
           setLoading(false);
+          
+          // Pokud cached user nemá nickname, načíst ho na pozadí
+          if (!cached.nickname) {
+            console.log("[useAuth] Cached user nemá nickname, načítám na pozadí...");
+            // Načíst na pozadí, ale neblokovat UI
+            authUtils.getCurrentUser()
+              .then((current) => {
+                if (isMounted && current) {
+                  setUser(current);
+                }
+              })
+              .catch((err) => {
+                console.error("[useAuth] Chyba při načítání nicknamu na pozadí:", err);
+                // Nechat cached user, UI už funguje
+              });
+          }
         }
 
-        // 2) Síťové ověření aktuální session u Supabase
-        const current = await authUtils.getCurrentUser();
-        if (!isMounted) return;
-        setUser(current);
-        setError(null);
+        // 2) Síťové ověření aktuální session u Supabase (pokud nemáme cached user)
+        if (!cached) {
+          const current = await authUtils.getCurrentUser();
+          if (!isMounted) return;
+          // Vždy nastavit user, i když je null (pro správné zobrazení)
+          setUser(current);
+          setError(null);
+        }
       } catch (err: any) {
         if (!isMounted) return;
         console.error("Chyba při načítání uživatele:", err);
-        setError(err.message);
-        setUser(null);
+        // Pokud máme cached user, použít ho jako fallback
+        const cached = authUtils.getCachedUser();
+        if (cached) {
+          console.warn("[useAuth] Používám cached user jako fallback po chybě");
+          setUser(cached);
+          setError(null);
+        } else {
+          setError(err.message);
+          setUser(null);
+        }
       } finally {
         if (isMounted) setLoading(false);
       }

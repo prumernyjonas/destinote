@@ -47,33 +47,60 @@ export async function GET(
   }
   const list = (data || []).filter((c) => !c.deleted_at);
 
-  // Doplníme/aktualizujeme avatar a nickname z auth.user_metadata pro všechny autory (nejen chybějící).
+  // Doplníme/aktualizujeme avatar a nickname z users tabulky (rychlejší než Auth API)
   const uniqueIds = Array.from(new Set(list.map((c) => c.author_id)));
   const profileMap = new Map<
     string,
     { nickname?: string | null; avatar_url?: string | null }
   >();
-  await Promise.all(
-    uniqueIds.map(async (uid) => {
-      try {
-        const { data: userData } = await admin.auth.admin.getUserById(uid);
-        const meta = (userData as any)?.user?.user_metadata || {};
-        const nickname =
-          meta.nickname ||
-          meta.full_name ||
-          meta.name ||
-          meta.user_name ||
-          null;
-        const avatarUrl = meta.avatar_url || meta.picture || null;
-        profileMap.set(uid, {
-          nickname,
-          avatar_url: avatarUrl,
-        });
-      } catch (e) {
-        console.warn("[comments.GET] auth meta fetch failed for", uid, e);
+  
+  if (uniqueIds.length > 0) {
+    try {
+      // Načíst data z users tabulky (rychlejší než Auth API)
+      const { data: usersData, error: usersError } = await admin
+        .from("users")
+        .select("id, nickname, avatar_url")
+        .in("id", uniqueIds)
+        .is("deleted_at", null);
+      
+      if (!usersError && usersData) {
+        for (const user of usersData) {
+          profileMap.set(user.id, {
+            nickname: user.nickname || null,
+            avatar_url: user.avatar_url || null,
+          });
+        }
       }
-    })
-  );
+      
+      // Fallback: pro chybějící uživatele zkusit Auth API
+      const missingIds = uniqueIds.filter((id) => !profileMap.has(id));
+      if (missingIds.length > 0) {
+        await Promise.all(
+          missingIds.slice(0, 10).map(async (uid) => { // Limit 10 pro bezpečnost
+            try {
+              const { data: userData } = await admin.auth.admin.getUserById(uid);
+              const meta = (userData as any)?.user?.user_metadata || {};
+              const nickname =
+                meta.nickname ||
+                meta.full_name ||
+                meta.name ||
+                meta.user_name ||
+                null;
+              const avatarUrl = meta.avatar_url || meta.picture || null;
+              profileMap.set(uid, {
+                nickname,
+                avatar_url: avatarUrl,
+              });
+            } catch (e) {
+              console.warn("[comments.GET] auth meta fetch failed for", uid, e);
+            }
+          })
+        );
+      }
+    } catch (e) {
+      console.warn("[comments.GET] Error loading user profiles:", e);
+    }
+  }
 
   for (const c of list) {
     const meta = profileMap.get(c.author_id);

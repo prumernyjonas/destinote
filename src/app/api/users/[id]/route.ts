@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getUserIdFromRequest } from "@/app/api/_utils/auth";
+import { findUserBySlug } from "@/app/api/_utils/users";
 import { PublicProfile } from "@/types/database";
-
-// Slugifikace - odstranění diakritiky a převod na malá písmena
-function slugifyNickname(str: string): string {
-  return str
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // odstranit diakritiku
-    .toLowerCase()
-    .replace(/\s+/g, "-"); // mezery na pomlčky
-}
 
 export async function GET(
   req: NextRequest,
@@ -51,22 +43,15 @@ export async function GET(
       user = result.data;
       userError = result.error;
     } else {
-      // Hledání podle slugifikovaného nicknamu
-      const slugToFind = slugifyNickname(decodedId);
-
-      // Načíst všechny uživatele a najít shodu podle slugifikovaného nicknamu
-      const { data: allUsers, error } = await admin
-        .from("users")
-        .select("id, nickname, first_name, last_name, avatar_url, bio")
-        .is("deleted_at", null);
-
-      if (error) {
-        userError = error;
-      } else {
-        // Najít uživatele se shodným slugem
-        user =
-          allUsers?.find((u) => slugifyNickname(u.nickname) === slugToFind) ||
-          null;
+      // Hledání podle slugifikovaného nicknamu - použít optimalizovanou funkci
+      try {
+        user = await findUserBySlug(decodedId);
+        if (!user) {
+          userError = { message: "Uživatel nenalezen" };
+        }
+      } catch (err: any) {
+        console.error("[users/[id]] Error finding user by slug:", err);
+        userError = { message: err.message || "Chyba při hledání uživatele" };
       }
     }
 

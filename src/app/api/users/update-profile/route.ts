@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { slugifyNickname } from "@/utils/slugify";
+import { checkNicknameExists } from "@/app/api/_utils/users";
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -91,40 +92,26 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Kontrola, zda nickname už existuje (kromě aktuálního uživatele)
-    // Použijeme stejný endpoint jako při registraci pro kontrolu
-    const admin = createAdminSupabaseClient();
-    
-    // Načíst všechny uživatele a zkontrolovat podle slugifikovaného nicknamu
-    // Poznámka: Toto může být pomalé pro velké databáze, ale je to nejjednodušší způsob
-    // bez vytváření dalšího indexu nebo computed column
+    // Použít optimalizovanou funkci místo načítání všech uživatelů
     console.log("[update-profile] Kontroluji unikátnost nicknamu...");
-    const { data: allUsers, error: listError } = await admin
-      .from("users")
-      .select("id, nickname")
-      .is("deleted_at", null);
-
-    if (listError) {
-      console.error("[update-profile] Chyba při načítání uživatelů:", listError);
+    const nicknameSlug = slugifyNickname(trimmedNickname);
+    
+    try {
+      const exists = await checkNicknameExists(trimmedNickname, userId);
+      if (exists) {
+        console.log("[update-profile] Nickname již existuje:", trimmedNickname);
+        return NextResponse.json(
+          {
+            error: `Přezdívka "${trimmedNickname}" je již obsazena. Zkuste jinou přezdívku.`,
+          },
+          { status: 400 }
+        );
+      }
+    } catch (err: any) {
+      console.error("[update-profile] Chyba při kontrole unikátnosti:", err);
       return NextResponse.json(
         { error: "Chyba při kontrole přezdívky" },
         { status: 500 }
-      );
-    }
-
-    const nicknameSlug = slugifyNickname(trimmedNickname);
-    const exists = allUsers?.some(
-      (user) =>
-        user.id !== userId &&
-        slugifyNickname(user.nickname) === nicknameSlug
-    );
-
-    if (exists) {
-      console.log("[update-profile] Nickname již existuje:", trimmedNickname);
-      return NextResponse.json(
-        {
-          error: `Přezdívka "${trimmedNickname}" je již obsazena. Zkuste jinou přezdívku.`,
-        },
-        { status: 400 }
       );
     }
 

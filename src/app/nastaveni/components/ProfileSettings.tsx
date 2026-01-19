@@ -217,17 +217,6 @@ export default function ProfileSettings() {
             }
             setPendingAvatarBlob(null);
             setPendingAvatarPreview(null);
-            
-            // Aktualizovat uživatele hned po nahrání avatara, aby se zobrazil všude
-            if (refreshUser) {
-              try {
-                await refreshUser();
-                console.log("[ProfileSettings] User objekt aktualizován po nahrání avatara");
-              } catch (err) {
-                console.error("[ProfileSettings] Chyba při refreshUser po nahrání avatara:", err);
-                // Necháme to projít, protože avatar už je nahráný
-              }
-            }
           } else {
             console.warn("[ProfileSettings] Avatar nahrán, ale URL není k dispozici");
           }
@@ -240,6 +229,38 @@ export default function ProfileSettings() {
         } finally {
           setAvatarUploading(false);
         }
+        
+        // Aktualizovat uživatele PO nahrání avatara (mimo try-catch, aby se loader nezobrazoval)
+        // Toto se provede na pozadí, aby se avatar zobrazil všude
+        if (uploadedAvatarUrl && refreshUser) {
+          refreshUser().catch((err) => {
+            console.error("[ProfileSettings] Chyba při refreshUser po nahrání avatara:", err);
+            // Necháme to projít, protože avatar už je nahráný
+          });
+        }
+      }
+
+      // Pokud se nemění nickname (je stejný jako aktuální) a už jsme nahráli avatar, ukončit
+      if (trimmed === currentDbNickname && uploadedAvatarUrl) {
+        console.log("[ProfileSettings] Nickname se nezměnil a avatar je nahrán, ukončuji");
+        setSaving(false);
+        toast.success("Změny byly úspěšně uloženy");
+        return;
+      }
+      
+      // Pokud se nemění nickname a není žádný pending avatar, ukončit
+      if (trimmed === currentDbNickname && !pendingAvatarBlob && !uploadedAvatarUrl) {
+        console.log("[ProfileSettings] Nickname se nezměnil a není žádná změna, ukončuji");
+        setSaving(false);
+        return;
+      }
+
+      // Pokud se nemění nickname (je stejný jako aktuální), ukončit hned po nahrání avatara
+      if (trimmed === currentDbNickname && !pendingAvatarBlob) {
+        console.log("[ProfileSettings] Nickname se nezměnil a není pending avatar, ukončuji");
+        setSaving(false);
+        toast.success("Změny byly úspěšně uloženy");
+        return;
       }
 
       // Získat access token pro autorizaci (s timeoutem a fallbacky)
@@ -305,18 +326,22 @@ export default function ProfileSettings() {
       setNickname(trimmed);
       setDisplayInitial(getInitial(trimmed));
 
-      // Aktualizovat uživatele SYNCHRONNĚ, aby se slug propisoval do Navbaru a dalších komponent
-      // Toto musí být synchronní, aby se slug aktualizoval správně
-      // refreshUser() už vymaže cache interně
+      // Nastavit saving na false PŘED refreshUser, aby se loader zastavil okamžitě
+      setSaving(false);
+      toast.success("Změny byly úspěšně uloženy");
+
+      // Aktualizovat uživatele na pozadí (asynchronně), aby se slug propisoval do Navbaru
+      // Toto se provede na pozadí, aby se UI nezablokovalo
       if (refreshUser) {
-        console.log("[ProfileSettings] Aktualizuji user objekt synchronně...");
-        try {
-          await refreshUser();
-          console.log("[ProfileSettings] User objekt aktualizován, slug by měl být:", slugifyNickname(trimmed));
-        } catch (err) {
-          console.error("[ProfileSettings] Chyba při refreshUser:", err);
-          // Necháme to projít, protože přezdívka už je uložená
-        }
+        console.log("[ProfileSettings] Aktualizuji user objekt na pozadí...");
+        refreshUser()
+          .then(() => {
+            console.log("[ProfileSettings] User objekt aktualizován, slug by měl být:", slugifyNickname(trimmed));
+          })
+          .catch((err) => {
+            console.error("[ProfileSettings] Chyba při refreshUser:", err);
+            // Necháme to projít, protože přezdívka už je uložená
+          });
       }
 
       // Pokud jsme nahráli avatar, už máme URL, takže nemusíme načítat z DB
@@ -347,10 +372,6 @@ export default function ProfileSettings() {
             console.error("[ProfileSettings] Chyba při načítání avatara po uložení:", err);
           });
       }
-
-      // Nastavit saving na false a zobrazit úspěch až po dokončení refreshUser
-      setSaving(false);
-      toast.success("Změny byly úspěšně uloženy");
     } catch (err: any) {
       console.error("[ProfileSettings] Chyba při aktualizaci nicknamu:", err);
       const errorMessage = err.message || "Chyba při aktualizaci přezdívky";

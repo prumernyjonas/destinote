@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { slugifyNickname } from "@/utils/slugify";
+import { checkNicknameExists } from "@/app/api/_utils/users";
 
 /**
  * API endpoint pro kontrolu, zda nickname už existuje
@@ -29,26 +29,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const admin = createAdminSupabaseClient();
-
-    // Načíst všechny uživatele a zkontrolovat, zda už existuje nickname se stejným slugem
-    const { data: allUsers, error } = await admin
-      .from("users")
-      .select("nickname")
-      .is("deleted_at", null);
-
-    if (error) {
-      console.error("Chyba při kontrole nicknamu:", error);
-      return NextResponse.json(
-        { available: false, error: "Chyba při kontrole nicknamu" },
-        { status: 500 }
-      );
-    }
-
-    // Zkontrolovat, zda už existuje nickname se stejným slugem
-    const exists = allUsers?.some(
-      (user) => slugifyNickname(user.nickname) === nicknameSlug
-    );
+    // Použít optimalizovanou funkci místo načítání všech uživatelů
+    const exists = await checkNicknameExists(trimmedNickname);
 
     return NextResponse.json({
       available: !exists,

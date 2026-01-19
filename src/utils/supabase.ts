@@ -443,12 +443,17 @@ export const authUtils = {
     }
 
     // Pokud API selhalo, zkusit použít cached user jako fallback
+    // Ale vždy se pokusit načíst nickname z metadata, pokud není v cache
     if (apiFailed) {
       const cached = this.getCachedUser();
       if (cached && cached.uid === sbUser.id) {
         console.warn("[getCurrentUser] API selhalo, použiji cached user pro:", sbUser.id);
+        // Použít nickname z cache, nebo z metadata, nebo z emailu
+        const fallbackNickname = cached.nickname || (sbUser.user_metadata as any)?.nickname || 
+          (sbUser.email ? sbUser.email.split("@")[0] : undefined);
+        const fallbackAvatar = cached.photoURL || null;
         // Aktualizovat cache s aktuálními daty ze Supabase (i když API selhalo)
-        const user = mapSupabaseUserToAppUser(sbUser, cached.nickname, cached.photoURL || null);
+        const user = mapSupabaseUserToAppUser(sbUser, fallbackNickname, fallbackAvatar);
         this.setCachedUser(user);
         return user;
       }
