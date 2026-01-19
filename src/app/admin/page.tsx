@@ -288,8 +288,8 @@ function AdminDashboard() {
       <main className="max-w-6xl mx-auto px-4 py-8 relative z-10">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Admin Dashboard</h1>
-          <p className="text-sm text-white/80">
+          <h1 className="text-4xl font-bold text-white mb-2">Admin Dashboard</h1>
+          <p className="text-base text-white/80">
             Správa článků a uživatelů platformy
           </p>
         </div>
@@ -335,12 +335,12 @@ function AdminDashboard() {
             </div>
 
             {/* Pending Articles Section */}
-            <section className="mb-8">
+            <section className="mb-10">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-white">
+                <h2 className="text-2xl font-bold text-white">
                   Články čekající na schválení
                 </h2>
-                <span className="text-sm text-white/80">
+                <span className="text-sm text-white/70 bg-white/10 px-3 py-1 rounded-full">
                   {pendingArticles.length} článků
                 </span>
               </div>
@@ -366,10 +366,10 @@ function AdminDashboard() {
               {/* Approved Articles - 7/12 */}
               <section className="lg:col-span-7">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-white">
+                  <h2 className="text-2xl font-bold text-white">
                     Schválené články
                   </h2>
-                  <span className="text-sm text-white/80">
+                  <span className="text-sm text-white/70 bg-white/10 px-3 py-1 rounded-full">
                     {filteredApprovedArticles.length} z {approvedArticles.length} článků
                   </span>
                 </div>
@@ -442,8 +442,8 @@ function AdminDashboard() {
               {/* Users - 5/12 */}
               <section className="lg:col-span-5">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-white">Uživatelé</h2>
-                  <span className="text-sm text-white/80">
+                  <h2 className="text-2xl font-bold text-white">Uživatelé</h2>
+                  <span className="text-sm text-white/70 bg-white/10 px-3 py-1 rounded-full">
                     {filteredUsers.length} z {users.length} uživatelů
                   </span>
                 </div>

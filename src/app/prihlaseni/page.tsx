@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { LuEye, LuEyeOff } from "react-icons/lu";
 import { authUtils } from "@/utils/supabase";
 import { useSearchParams } from "next/navigation";
+import AuthShell from "@/components/auth/AuthShell";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -56,6 +57,9 @@ export default function LoginPage() {
     if (message === "email-confirmation") {
       toast.success("Zkontrolujte svůj email a potvrďte registraci kliknutím na odkaz v emailu.");
     }
+    if (message === "password-reset-success") {
+      toast.success("Heslo bylo úspěšně změněno. Nyní se můžete přihlásit.");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -84,65 +88,54 @@ export default function LoginPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen relative flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      {/* Dark blue background gradient */}
-      <div 
-        className="fixed inset-0 -z-10"
-        style={{
-          background: 'linear-gradient(135deg, rgb(15, 30, 75) 0%, rgb(28, 57, 142) 50%, rgb(20, 40, 100) 100%)',
-        }}
-      />
-      
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white">Přihlaste se</h1>
-          <p className="mt-2 text-sm text-white/80">
-            Nebo{" "}
-            <Link
-              href="/registrace"
-              className="font-medium text-green-400 hover:text-green-300"
-            >
-              si vytvořte nový účet
-            </Link>
-          </p>
-        </div>
-      </div>
+  // Shared input class for consistency
+  const inputClass = "appearance-none block w-full px-4 py-2.5 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white transition-colors";
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="bg-white/95 backdrop-blur border border-white/15 shadow-xl py-8 px-4 sm:rounded-2xl sm:px-10">
-          <ErrorMessage error={error || localError} />
-          <form className="space-y-6" onSubmit={handleSubmit}>
+  return (
+    <AuthShell
+      title="Přihlaste se"
+      subtitle={
+        <>
+          Nebo{" "}
+          <Link
+            href="/registrace"
+            className="font-medium text-green-400 hover:text-green-300 transition-colors"
+          >
+            si vytvořte nový účet
+          </Link>
+        </>
+      }
+    >
+      <ErrorMessage error={error || localError} />
+      <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
               >
                 Email
               </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white"
-                  placeholder="jan.novak@email.com"
-                />
-              </div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputClass}
+                placeholder="jan.novak@email.com"
+              />
             </div>
 
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
               >
                 Heslo
               </label>
-              <div className="mt-1 relative">
+              <div className="relative">
                 <input
                   id="password"
                   name="password"
@@ -151,13 +144,13 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm pr-10 bg-white"
+                  className={`${inputClass} pr-10`}
                   placeholder="••••••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700 focus:outline-none transition-colors cursor-pointer"
                   aria-label={showPassword ? "Skrýt heslo" : "Zobrazit heslo"}
                   title={showPassword ? "Skrýt heslo" : "Zobrazit heslo"}
                 >
@@ -176,32 +169,32 @@ export default function LoginPage() {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
                 />
                 <label
                   htmlFor="remember-me"
-                  className="ml-2 block text-sm text-gray-900"
+                  className="ml-2 block text-sm text-gray-900 cursor-pointer"
                 >
                   Zapamatovat si mě
                 </label>
               </div>
 
               <div className="text-sm">
-                <a
-                  href="#"
-                  className="font-medium text-green-600 hover:text-green-500"
+                <Link
+                  href="/zapomenute-heslo"
+                  className="font-medium text-green-600 hover:text-green-500 transition-colors"
                 >
                   Zapomněli jste heslo?
-                </a>
+                </Link>
               </div>
             </div>
 
             <div>
               <Button
                 type="submit"
-                loading={submitting}
-                disabled={submitting}
-                className="w-full"
+                loading={submitting || loading}
+                disabled={submitting || loading}
+                className="w-full cursor-pointer"
               >
                 Přihlásit se
               </Button>
@@ -220,12 +213,14 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="mt-6 gap-3">
-              <button
+            <div className="mt-6">
+              <Button
                 type="button"
+                variant="outline"
                 onClick={handleGoogleLogin}
                 disabled={googleLoading}
-                className="w-full inline-flex items-center justify-center py-2 px-4 border border-white/15 rounded-xl shadow-sm bg-white/95 backdrop-blur text-sm font-medium text-gray-700 hover:bg-white disabled:opacity-60 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                loading={googleLoading}
+                className="w-full cursor-pointer"
               >
                 <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
                   <path
@@ -245,12 +240,10 @@ export default function LoginPage() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                <span>{googleLoading ? "Přesměrování..." : "Přihlásit přes Google"}</span>
-              </button>
+                {googleLoading ? "Přesměrování..." : "Přihlásit přes Google"}
+              </Button>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

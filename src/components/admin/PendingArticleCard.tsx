@@ -38,8 +38,8 @@ export default function PendingArticleCard({
           </div>
         )}
       </div>
-      <div className="p-3">
-        <h3 className="text-sm font-semibold text-slate-900 line-clamp-2 mb-1.5 group-hover:text-emerald-600 transition-colors">
+      <div className="p-4">
+        <h3 className="text-base font-semibold text-slate-900 line-clamp-2 mb-2 group-hover:text-emerald-600 transition-colors">
           {article.title}
         </h3>
         <div className="flex items-center justify-between text-xs text-slate-500">

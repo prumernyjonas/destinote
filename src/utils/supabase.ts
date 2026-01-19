@@ -45,7 +45,8 @@ function deserializeUser(value: string | null): User | null {
 
 function mapSupabaseUserToAppUser(
   sbUser: SupabaseUser,
-  dbNickname?: string
+  dbNickname?: string,
+  dbAvatarUrl?: string | null
 ): User {
   const meta = (sbUser.user_metadata as any) || {};
   // Nickname z DB má přednost, pak z metadata
@@ -60,7 +61,30 @@ function mapSupabaseUserToAppUser(
     meta.name ||
     meta.user_name ||
     (sbUser.email ? sbUser.email.split("@")[0] : "");
-  const photoURL = meta.avatar_url || meta.picture || "";
+  
+  // Avatar URL z DB má přednost, pak z metadata (ale ignorujeme Google fotky)
+  let photoURL = "";
+  if (dbAvatarUrl && dbAvatarUrl.trim() !== "") {
+    const isGooglePhoto = dbAvatarUrl.includes("googleusercontent.com") ||
+      dbAvatarUrl.includes("google.com") ||
+      dbAvatarUrl.includes("lh3.googleusercontent.com");
+    if (!isGooglePhoto) {
+      photoURL = dbAvatarUrl;
+    }
+  }
+  
+  // Fallback na metadata pouze pokud nemáme z DB
+  if (!photoURL) {
+    const metaPhotoUrl = meta.avatar_url || meta.picture || "";
+    const isGooglePhoto = metaPhotoUrl && (
+      metaPhotoUrl.includes("googleusercontent.com") ||
+      metaPhotoUrl.includes("google.com") ||
+      metaPhotoUrl.includes("lh3.googleusercontent.com")
+    );
+    if (metaPhotoUrl && !isGooglePhoto) {
+      photoURL = metaPhotoUrl;
+    }
+  }
 
   return {
     uid: sbUser.id,
@@ -130,7 +154,7 @@ export const authUtils = {
       throw new Error("Přihlášení selhalo – uživatel není dostupný");
     }
 
-    const user = mapSupabaseUserToAppUser(data.user);
+    const user = mapSupabaseUserToAppUser(data.user, undefined, undefined);
     // Uložení do cache pro rychlou rehydrataci po refreshi
     this.setCachedUser(user);
     return user;
@@ -296,7 +320,7 @@ export const authUtils = {
 
     // Neukládáme uživatele do cache, pokud není potvrzený
     if (data.user.email_confirmed_at) {
-      const user = mapSupabaseUserToAppUser(data.user);
+      const user = mapSupabaseUserToAppUser(data.user, undefined, undefined);
       this.setCachedUser(user);
       return user;
     }
@@ -362,19 +386,45 @@ export const authUtils = {
       return null;
     }
 
-    // Načíst nickname z API (obejde RLS)
+    // Načíst nickname a avatar_url z API (obejde RLS)
+    // Použít cache-busting pro zajištění, že se načte aktuální data
     let dbNickname: string | undefined;
+    let dbAvatarUrl: string | null | undefined;
     try {
-      const res = await fetch(`/api/users/${sbUser.id}`);
+      // Přidat timestamp pro cache-busting
+      const timestamp = Date.now();
+      const res = await fetch(`/api/users/${sbUser.id}?t=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      });
       if (res.ok) {
         const json = await res.json();
         dbNickname = json.data?.nickname;
+        dbAvatarUrl = json.data?.avatarUrl;
+        console.log("[getCurrentUser] Načteno z API:", { 
+          userId: sbUser.id, 
+          dbNickname, 
+          dbAvatarUrl,
+          email: sbUser.email 
+        });
+      } else {
+        console.warn("[getCurrentUser] API request failed:", res.status, res.statusText);
       }
     } catch {
       // Ignorovat chybu - použije se fallback
     }
 
-    const user = mapSupabaseUserToAppUser(sbUser, dbNickname);
+    const user = mapSupabaseUserToAppUser(sbUser, dbNickname, dbAvatarUrl);
+    console.log("[getCurrentUser] Vytvořen user objekt:", { 
+      uid: user.uid,
+      nickname: user.nickname, 
+      nicknameSlug: user.nicknameSlug,
+      displayName: user.displayName,
+      email: user.email 
+    });
     // Udržovat cache synchronní se stavem Supabase
     this.setCachedUser(user);
     return user;

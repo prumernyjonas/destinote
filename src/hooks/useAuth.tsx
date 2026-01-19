@@ -22,6 +22,7 @@ interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -122,6 +123,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      // Vymazat cache před načtením, aby se načetla aktuální data z databáze
+      authUtils.clearCachedUser();
+      const current = await authUtils.getCurrentUser();
+      setUser(current);
+      setError(null);
+    } catch (err: any) {
+      console.error("Chyba při aktualizaci uživatele:", err);
+      setError(err.message);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     loading,
@@ -129,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     register,
     logout,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

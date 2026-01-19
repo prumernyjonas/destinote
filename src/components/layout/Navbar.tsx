@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   FiAward,
@@ -10,22 +10,24 @@ import {
   FiGlobe,
   FiHelpCircle,
   FiHome,
+  FiLayout,
   FiLogOut,
   FiMap,
   FiMenu,
   FiNavigation,
   FiSearch,
-  FiSettings,
   FiUser,
   FiUsers,
   FiX,
 } from "react-icons/fi";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { supabase } from "@/lib/supabase/client";
 import { marble } from "@/lib/fonts";
 
-function getInitial(user: { displayName?: string; email?: string } | null) {
+function getInitial(user: { nickname?: string; displayName?: string; email?: string } | null) {
   return (
+    user?.nickname?.charAt(0)?.toUpperCase() ||
     user?.displayName?.charAt(0)?.toUpperCase() ||
     user?.email?.charAt(0)?.toUpperCase() ||
     "?"
@@ -47,8 +49,10 @@ export default function Navbar() {
   const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const menuItems = [
+  const { isAdmin } = useIsAdmin();
+  
+  // menuItems musí být useMemo, aby se přepočítaly když se změní isAdmin
+  const menuItems = useMemo(() => [
     {
       label: "Můj profil",
       icon: FiUser,
@@ -57,6 +61,18 @@ export default function Navbar() {
         router.push(`/profil/${user?.nicknameSlug || user?.uid}`);
       },
     },
+    ...(isAdmin
+      ? [
+          {
+            label: "Dashboard",
+            icon: FiLayout,
+            onClick: () => {
+              setMenuOpen(false);
+              router.push("/admin");
+            },
+          },
+        ]
+      : []),
     {
       label: "Nápověda",
       icon: FiHelpCircle,
@@ -65,19 +81,31 @@ export default function Navbar() {
         router.push("/napoveda");
       },
     },
-    {
-      label: "Nastavení",
-      icon: FiSettings,
-      onClick: () => {
-        setMenuOpen(false);
-        router.push("/nastaveni");
-      },
-    },
-  ];
+  ], [isAdmin, user?.nicknameSlug, user?.uid, router]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Retry mechanismus pro načítání uživatele, pokud se nenačte
+  useEffect(() => {
+    if (mounted && !authLoading && !user) {
+      // Pokud se user nenačte po 2 sekundách, zkusíme znovu
+      const timeout = setTimeout(() => {
+        // Force refresh auth state
+        if (typeof window !== "undefined") {
+          supabase.auth.getSession().then(({ data }) => {
+            if (data.session && !user) {
+              // Session existuje, ale user se nenačetl - zkusíme refresh
+              window.location.reload();
+            }
+          });
+        }
+      }, 2000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [mounted, authLoading, user]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -374,33 +402,36 @@ export default function Navbar() {
                 className="hidden md:flex items-center relative"
                 ref={menuRef}
               >
-                {!mounted ? (
+                {!mounted || authLoading ? (
                   <div style={{ width: 96, height: 36 }} />
                 ) : user ? (
                   <>
-                    {/* Resolve admin role once menu becomes available */}
-                    {/* We purposefully fetch lazily after mount to avoid SSR mismatch */}
-                    {mounted && (
-                      <RoleResolver onResolved={(v) => setIsAdmin(v)} />
-                    )}
                     <button
                       aria-label="Uživatelské menu"
                       onClick={() => setMenuOpen((v) => !v)}
                       className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 cursor-pointer"
                     >
-                      <div className="w-9 h-9 rounded-full overflow-hidden bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-1 ring-green-200">
-                        {user.photoURL ? (
-                          <Image
+                      {user.photoURL ? (
+                        <div className="w-9 h-9 rounded-full overflow-hidden ring-1 ring-green-200">
+                          <img
                             src={user.photoURL}
-                            alt={user.displayName || user.email}
-                            width={36}
-                            height={36}
-                            className="object-cover w-9 h-9"
+                            alt={user.nickname || "Avatar"}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Pokud se obrázek nenačte, zobrazit inicial
+                              e.currentTarget.style.display = "none";
+                              const parent = e.currentTarget.parentElement;
+                              if (parent) {
+                                parent.innerHTML = `<div class="w-9 h-9 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-1 ring-green-200">${getInitial(user)}</div>`;
+                              }
+                            }}
                           />
-                        ) : (
-                          getInitial(user)
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="w-9 h-9 rounded-full overflow-hidden bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-1 ring-green-200">
+                          {getInitial(user)}
+                        </div>
+                      )}
                       <FiChevronDown
                         aria-hidden
                         className={`text-green-800 transition-transform ${
@@ -411,26 +442,36 @@ export default function Navbar() {
                     {menuOpen && (
                       <div className="absolute right-0 top-14 w-80 bg-white shadow-2xl rounded-2xl border border-slate-200 p-4 z-50">
                         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-                          <div className="w-12 h-12 rounded-full overflow-hidden bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200">
-                            {user.photoURL ? (
-                              <Image
+                          {user.photoURL ? (
+                            <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-green-200">
+                              <img
                                 src={user.photoURL}
-                                alt={user.displayName || user.email}
-                                width={48}
-                                height={48}
-                                className="object-cover w-12 h-12"
+                                alt={user.nickname || "Avatar"}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // Pokud se obrázek nenačte, zobrazit inicial
+                                  e.currentTarget.style.display = "none";
+                                  const parent = e.currentTarget.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = `<div class="w-12 h-12 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200">${getInitial(user)}</div>`;
+                                  }
+                                }}
                               />
-                            ) : (
-                              getInitial(user)
-                            )}
-                          </div>
+                            </div>
+                          ) : (
+                            <div className="w-12 h-12 rounded-full overflow-hidden bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200">
+                              {getInitial(user)}
+                            </div>
+                          )}
                           <div className="flex flex-col">
                             <span className="text-base font-semibold text-slate-900">
-                              {user.displayName || user.email || "Uživatel"}
+                              {user.nickname || "Uživatel"}
                             </span>
-                            <span className="text-sm text-slate-500">
-                              {user.email || "Člen Destinote"}
-                            </span>
+                            {user.email && (
+                              <span className="text-sm text-slate-500">
+                                {user.email}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="pt-3 space-y-1">
@@ -642,32 +683,42 @@ export default function Navbar() {
             </nav>
 
             {/* User Section */}
-            {mounted && user && (
+            {mounted && !authLoading && user && (
               <div className="border-t border-blue-200 bg-white/30">
                 <button
                   onClick={() => setMobileUserMenuOpen(!mobileUserMenuOpen)}
                   className="w-full px-6 py-5 flex items-center gap-3 hover:bg-white/40 transition"
                 >
-                  <div className="w-12 h-12 rounded-full overflow-hidden bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200 flex-shrink-0">
-                    {user.photoURL ? (
-                      <Image
+                  {user.photoURL ? (
+                    <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-green-200 flex-shrink-0">
+                      <img
                         src={user.photoURL}
-                        alt={user.displayName || user.email}
-                        width={48}
-                        height={48}
-                        className="object-cover w-12 h-12"
+                        alt={user.nickname || "Avatar"}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Pokud se obrázek nenačte, zobrazit inicial
+                          e.currentTarget.style.display = "none";
+                          const parent = e.currentTarget.parentElement;
+                          if (parent) {
+                            parent.innerHTML = `<div class="w-12 h-12 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200 flex-shrink-0">${getInitial(user)}</div>`;
+                          }
+                        }}
                       />
-                    ) : (
-                      getInitial(user)
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200 flex-shrink-0">
+                      {getInitial(user)}
+                    </div>
+                  )}
                   <div className="flex flex-col flex-1 min-w-0 text-left">
                     <span className="text-base font-semibold text-blue-900 truncate">
-                      {user.displayName || user.email || "Uživatel"}
+                      {user.nickname || "Uživatel"}
                     </span>
-                    <span className="text-sm text-blue-700 truncate">
-                      {user.email || "Člen Destinote"}
-                    </span>
+                    {user.email && (
+                      <span className="text-sm text-blue-700 truncate">
+                        {user.email}
+                      </span>
+                    )}
                   </div>
                   <FiChevronDown
                     className={`w-5 h-5 text-blue-900 transition-transform flex-shrink-0 ${
@@ -690,6 +741,19 @@ export default function Navbar() {
                       <FiUser className="text-lg" />
                       <span>Můj profil</span>
                     </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          setMobileUserMenuOpen(false);
+                          router.push("/admin");
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
+                      >
+                        <FiLayout className="text-lg" />
+                        <span>Dashboard</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setMobileMenuOpen(false);
@@ -700,17 +764,6 @@ export default function Navbar() {
                     >
                       <FiHelpCircle className="text-lg" />
                       <span>Nápověda</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        setMobileUserMenuOpen(false);
-                        router.push("/nastaveni");
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
-                    >
-                      <FiSettings className="text-lg" />
-                      <span>Nastavení</span>
                     </button>
                     <button
                       onClick={async () => {
@@ -737,7 +790,7 @@ export default function Navbar() {
               </div>
             )}
 
-            {mounted && !user && !authLoading && (
+            {mounted && !authLoading && !user && (
               <div className="border-t border-blue-200 px-6 pt-5 pb-12 bg-white/30">
                 <button
                   onClick={() => {
@@ -757,52 +810,3 @@ export default function Navbar() {
   );
 }
 
-function RoleResolver({
-  onResolved,
-}: {
-  onResolved: (isAdmin: boolean) => void;
-}) {
-  useEffect(() => {
-    let cancelled = false;
-    let unsub: { data?: { subscription?: { unsubscribe(): void } } } | null =
-      null;
-
-    async function checkRole() {
-      try {
-        const { data } = await supabase.auth.getSession();
-        const access = data.session?.access_token;
-        const headers: Record<string, string> = {};
-        if (access) headers["Authorization"] = `Bearer ${access}`;
-        const res = await fetch("/api/auth/role", {
-          cache: "no-store",
-          headers,
-        });
-        if (!res.ok) {
-          return;
-        }
-        const d = await res.json();
-        if (!cancelled) onResolved(!!d?.isAdmin && d.role === "admin");
-      } catch {
-        // ignore
-      }
-    }
-
-    // 1) První pokus
-    checkRole();
-    // 2) Znovu při změně auth stavu
-    unsub = supabase.auth.onAuthStateChange(() => {
-      checkRole();
-    });
-    // 3) Bezpečný retry po krátké prodlevě (řeší závod o session)
-    const t = setTimeout(() => checkRole(), 700);
-
-    return () => {
-      cancelled = true;
-      try {
-        unsub?.data?.subscription?.unsubscribe();
-      } catch {}
-      clearTimeout(t);
-    };
-  }, [onResolved]);
-  return null;
-}

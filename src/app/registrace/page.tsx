@@ -9,6 +9,7 @@ import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { useToast } from "@/components/ui/Toast";
 import { validatePasswordStrength } from "@/utils/password";
 import { authUtils } from "@/utils/supabase";
+import AuthShell from "@/components/auth/AuthShell";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -22,13 +23,25 @@ export default function RegisterPage() {
   const [nicknameAvailable, setNicknameAvailable] = useState<boolean | null>(
     null
   );
+  const [emailChecking, setEmailChecking] = useState(false);
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
   const { register, loading, error } = useAuth();
   const router = useRouter();
   const toast = useToast();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Shared input class for consistency
+  const inputClass = "appearance-none block w-full px-4 py-2.5 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white transition-colors";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
+
+    // Zabraň dvojitému odeslání
+    if (submitting || loading) {
+      return;
+    }
 
     // Validace přezdívky
     const trimmedNickname = formData.nickname.trim();
@@ -80,6 +93,44 @@ export default function RegisterPage() {
       setNicknameChecking(false);
     }
 
+    // Kontrola, zda email už existuje
+    const trimmedEmail = formData.email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      setLocalError("Email je povinný!");
+      return;
+    }
+
+    // Validace email formátu
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setLocalError("Neplatný formát emailu!");
+      return;
+    }
+
+    try {
+      setEmailChecking(true);
+      const emailResponse = await fetch(
+        `/api/users/check-email?email=${encodeURIComponent(trimmedEmail)}`
+      );
+      const emailData = await emailResponse.json();
+
+      if (!emailData.available) {
+        setLocalError(
+          emailData.message ||
+            `Email "${trimmedEmail}" je již zaregistrován. Zkuste se přihlásit nebo použijte jiný email.`
+        );
+        setEmailAvailable(false);
+        setEmailChecking(false);
+        return;
+      }
+      setEmailAvailable(true);
+    } catch (err) {
+      console.error("Chyba při kontrole emailu:", err);
+      // Pokračujeme i při chybě - kontrola se provede i na backendu
+    } finally {
+      setEmailChecking(false);
+    }
+
     const strengthError = validatePasswordStrength(formData.password);
     if (strengthError) {
       setLocalError(strengthError);
@@ -92,6 +143,7 @@ export default function RegisterPage() {
     }
 
     try {
+      setSubmitting(true);
       await register({
         ...formData,
         nickname: trimmedNickname,
@@ -115,6 +167,8 @@ export default function RegisterPage() {
         toast.error(errorMessage);
         setLocalError(errorMessage);
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -128,6 +182,11 @@ export default function RegisterPage() {
     // Resetovat stav dostupnosti nicknamu při změně
     if (e.target.name === "nickname") {
       setNicknameAvailable(null);
+      setLocalError(null);
+    }
+    // Resetovat stav dostupnosti emailu při změně
+    if (e.target.name === "email") {
+      setEmailAvailable(null);
       setLocalError(null);
     }
   };
@@ -171,43 +230,88 @@ export default function RegisterPage() {
     }
   }, [formData.nickname]);
 
-  return (
-    <div className="min-h-screen relative flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      {/* Dark blue background gradient */}
-      <div 
-        className="fixed inset-0 -z-10"
-        style={{
-          background: 'linear-gradient(135deg, rgb(15, 30, 75) 0%, rgb(28, 57, 142) 50%, rgb(20, 40, 100) 100%)',
-        }}
-      />
-      
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-white">Registrujte se</h2>
-          <p className="mt-2 text-sm text-white/80">
-            Nebo{" "}
-            <Link
-              href="/prihlaseni"
-              className="font-medium text-green-400 hover:text-green-300"
-            >
-              se přihlaste do existujícího účtu
-            </Link>
-          </p>
-        </div>
-      </div>
+  // Debounced kontrola emailu při psaní
+  useEffect(() => {
+    const trimmedEmail = formData.email.trim().toLowerCase();
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="bg-white/95 backdrop-blur border border-white/15 shadow-xl py-8 px-4 sm:rounded-2xl sm:px-10">
-          <ErrorMessage error={error || localError} />
-          <form className="space-y-6" onSubmit={handleSubmit}>
+    // Validace email formátu
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    // Kontrolovat pouze pokud je email validní
+    if (trimmedEmail && emailRegex.test(trimmedEmail)) {
+      const timeoutId = setTimeout(async () => {
+        try {
+          setEmailChecking(true);
+          const response = await fetch(
+            `/api/users/check-email?email=${encodeURIComponent(trimmedEmail)}`
+          );
+          const data = await response.json();
+          setEmailAvailable(data.available);
+          if (!data.available && formData.email.trim().toLowerCase() === trimmedEmail) {
+            setLocalError(
+              data.message || `Email "${trimmedEmail}" je již zaregistrován. Zkuste se přihlásit nebo použijte jiný email.`
+            );
+          } else if (data.available && formData.email.trim().toLowerCase() === trimmedEmail) {
+            // Vymazat chybu pouze pokud je to chyba související s emailem
+            setLocalError((prev) => {
+              if (!prev) return null;
+              if (prev.includes("zaregistrován") || prev.includes("Email") || prev.includes("email") || prev.includes("Neplatný formát emailu")) {
+                return null;
+              }
+              return prev;
+            });
+          }
+        } catch (err) {
+          console.error("Chyba při kontrole emailu:", err);
+        } finally {
+          setEmailChecking(false);
+        }
+      }, 500); // Debounce 500ms
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      setEmailAvailable(null);
+    }
+  }, [formData.email]);
+
+  const handleGoogleRegister = async () => {
+    try {
+      setLocalError(null);
+      setGoogleLoading(true);
+      await authUtils.loginWithGoogle();
+    } catch (err: any) {
+      toast.error(err.message || "Chyba při přihlášení přes Google");
+      setLocalError(err.message || "Chyba při přihlášení přes Google");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  return (
+    <AuthShell
+      title="Registrujte se"
+      subtitle={
+        <>
+          Nebo{" "}
+          <Link
+            href="/prihlaseni"
+            className="font-medium text-green-400 hover:text-green-300 transition-colors"
+          >
+            se přihlaste do existujícího účtu
+          </Link>
+        </>
+      }
+    >
+      <ErrorMessage error={error || localError} />
+      <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label
                 htmlFor="nickname"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
               >
                 Přezdívka
               </label>
-              <div className="mt-1 relative">
+              <div className="relative">
                 <input
                   id="nickname"
                   name="nickname"
@@ -216,7 +320,7 @@ export default function RegisterPage() {
                   required
                   value={formData.nickname}
                   onChange={handleChange}
-                  className={`appearance-none block w-full px-3 py-2 border rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white ${
+                  className={`${inputClass} ${
                     nicknameAvailable === true
                       ? "border-green-500"
                       : nicknameAvailable === false
@@ -241,14 +345,14 @@ export default function RegisterPage() {
               </div>
               {nicknameAvailable === false &&
                 formData.nickname.trim().length >= 3 && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className="mt-1.5 text-sm text-red-600">
                     Tato přezdívka je již obsazena (včetně variant s diakritikou
                     a velkými písmeny)
                   </p>
                 )}
               {nicknameAvailable === true &&
                 formData.nickname.trim().length >= 3 && (
-                  <p className="mt-1 text-sm text-green-600">
+                  <p className="mt-1.5 text-sm text-green-600">
                     Přezdívka je dostupná
                   </p>
                 )}
@@ -257,11 +361,11 @@ export default function RegisterPage() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
               >
                 Email
               </label>
-              <div className="mt-1">
+              <div className="relative">
                 <input
                   id="email"
                   name="email"
@@ -270,74 +374,99 @@ export default function RegisterPage() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white"
+                  className={`${inputClass} ${
+                    emailAvailable === true
+                      ? "border-green-500"
+                      : emailAvailable === false
+                      ? "border-red-500"
+                      : ""
+                  }`}
                   placeholder="vas@email.cz"
                 />
+                {emailChecking && (
+                  <div className="absolute right-3 top-2.5">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                  </div>
+                )}
+                {!emailChecking && emailAvailable === true && (
+                  <div className="absolute right-3 top-2.5 text-green-500">
+                    ✓
+                  </div>
+                )}
+                {!emailChecking && emailAvailable === false && (
+                  <div className="absolute right-3 top-2.5 text-red-500">✗</div>
+                )}
               </div>
+              {emailAvailable === false && formData.email.trim() && (
+                <p className="mt-1.5 text-sm text-red-600">
+                  Tento email je již zaregistrován. Zkuste se přihlásit nebo použijte jiný email.
+                </p>
+              )}
+              {emailAvailable === true && formData.email.trim() && (
+                <p className="mt-1.5 text-sm text-green-600">
+                  Email je dostupný
+                </p>
+              )}
             </div>
 
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
               >
                 Heslo
               </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white"
-                  placeholder="Minimálně 8 znaků"
-                />
-              </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className={inputClass}
+                placeholder="Minimálně 8 znaků"
+              />
             </div>
 
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
               >
                 Potvrdit heslo
               </label>
-              <div className="mt-1">
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white"
-                  placeholder="Zadejte heslo znovu"
-                />
-              </div>
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                required
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className={inputClass}
+                placeholder="Zadejte heslo znovu"
+              />
             </div>
 
-            <div className="flex items-center">
+            <div className="flex items-start">
               <input
                 id="terms"
                 name="terms"
                 type="checkbox"
                 required
-                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded mt-0.5 cursor-pointer"
               />
               <label
                 htmlFor="terms"
-                className="ml-2 block text-sm text-gray-900"
+                className="ml-2 block text-sm text-gray-900 cursor-pointer"
               >
                 Souhlasím s{" "}
-                <a href="#" className="text-green-600 hover:text-green-500">
+                <a href="/podminky" className="text-green-600 hover:text-green-500 transition-colors">
                   podmínkami použití
                 </a>{" "}
                 a{" "}
-                <a href="#" className="text-green-600 hover:text-green-500">
+                <a href="/ochrana-udaju" className="text-green-600 hover:text-green-500 transition-colors">
                   zásadami ochrany osobních údajů
                 </a>
               </label>
@@ -346,9 +475,9 @@ export default function RegisterPage() {
             <div>
               <Button
                 type="submit"
-                loading={loading}
-                disabled={loading}
-                className="w-full"
+                loading={submitting || loading}
+                disabled={submitting || loading}
+                className="w-full cursor-pointer"
               >
                 Vytvořit účet
               </Button>
@@ -368,18 +497,13 @@ export default function RegisterPage() {
             </div>
 
             <div className="mt-6">
-              <button
+              <Button
                 type="button"
-                onClick={async () => {
-                  try {
-                    await authUtils.loginWithGoogle();
-                  } catch (err: any) {
-                    toast.error(
-                      err.message || "Chyba při přihlášení přes Google"
-                    );
-                  }
-                }}
-                className="w-full inline-flex items-center justify-center py-2 px-4 border border-white/15 rounded-xl shadow-sm bg-white/95 backdrop-blur text-sm font-medium text-gray-700 hover:bg-white transition-colors cursor-pointer"
+                variant="outline"
+                onClick={handleGoogleRegister}
+                disabled={googleLoading}
+                loading={googleLoading}
+                className="w-full cursor-pointer"
               >
                 <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
                   <path
@@ -399,12 +523,10 @@ export default function RegisterPage() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-                <span>Přihlásit přes Google</span>
-              </button>
+                {googleLoading ? "Přesměrování..." : "Přihlásit přes Google"}
+              </Button>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

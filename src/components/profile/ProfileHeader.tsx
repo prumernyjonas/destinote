@@ -11,8 +11,6 @@ interface ProfileHeaderProps {
   initials: string;
   isOwnProfile: boolean;
   isFriend: boolean;
-  avatarUploading: boolean;
-  onAvatarClick: () => void;
   onFollowToggle: (newState: boolean) => void;
   visitedCountriesCount: number;
   articlesCount: number;
@@ -27,8 +25,6 @@ export default function ProfileHeader({
   initials,
   isOwnProfile,
   isFriend,
-  avatarUploading,
-  onAvatarClick,
   onFollowToggle,
   visitedCountriesCount,
   articlesCount,
@@ -40,45 +36,24 @@ export default function ProfileHeader({
     <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
       {/* Avatar - 64px */}
       <div className="flex-shrink-0">
-        {isOwnProfile ? (
-          <button
-            type="button"
-            className="relative group cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95"
-            title="Změnit profilovou fotku"
-            onClick={onAvatarClick}
-          >
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={profile.displayName}
-                className="h-16 w-16 rounded-full object-cover border-2 border-white shadow-sm transition-shadow duration-200 group-hover:shadow-md"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="h-16 w-16 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-base border-2 border-white shadow-sm transition-shadow duration-200 group-hover:shadow-md">
-                {initials || "?"}
-              </div>
-            )}
-            <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition-all duration-200 flex items-center justify-center">
-              <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-xs font-medium drop-shadow-lg">
-                Změnit
-              </span>
-            </div>
-            {avatarUploading && (
-              <div className="absolute inset-0 rounded-full bg-white/60 flex items-center justify-center text-xs font-medium">
-                Nahrávám…
-              </div>
-            )}
-          </button>
-        ) : avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt={profile.displayName}
-            className="h-16 w-16 rounded-full object-cover border-2 border-white shadow-sm"
-            referrerPolicy="no-referrer"
-          />
+        {avatarUrl && avatarUrl.trim() !== "" ? (
+          <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-white shadow-sm ring-2 ring-green-200">
+            <img
+              src={avatarUrl}
+              alt={profile.nickname || "Avatar"}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Pokud se obrázek nenačte, zobrazit inicial
+                e.currentTarget.style.display = "none";
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  parent.innerHTML = `<div class="h-16 w-16 rounded-full flex items-center justify-center bg-green-100 text-green-700 font-bold text-xl border-2 border-white shadow-sm ring-2 ring-green-200">${initials || "?"}</div>`;
+                }
+              }}
+            />
+          </div>
         ) : (
-          <div className="h-16 w-16 rounded-full flex items-center justify-center bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-bold text-base border-2 border-white shadow-sm">
+          <div className="h-16 w-16 rounded-full flex items-center justify-center bg-green-100 text-green-700 font-bold text-xl border-2 border-white shadow-sm ring-2 ring-green-200">
             {initials || "?"}
           </div>
         )}
@@ -153,7 +128,7 @@ export default function ProfileHeader({
 
             {isOwnProfile && (
               <Link
-                href="/settings"
+                href="/nastaveni"
                 className="inline-flex items-center gap-2 px-3 py-2 border border-slate-200 hover:bg-slate-50 shadow-none rounded-lg text-slate-700 font-medium transition-all duration-200 text-sm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 focus-visible:ring-offset-2"
                 aria-label="Upravit profil"
               >

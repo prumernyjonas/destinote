@@ -69,8 +69,6 @@ export default function ProfilePage({
   const [deleting, setDeleting] = useState(false);
 
   // Pro vlastní profil - editace
-  const [avatarUploading, setAvatarUploading] = useState(false);
-  const [avatarOverride, setAvatarOverride] = useState<string | null>(null);
   const [unvisitReq, setUnvisitReq] = useState<
     { iso2: string; nonce: number } | undefined
   >(undefined);
@@ -255,46 +253,6 @@ export default function ProfilePage({
     }
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!user) return;
-    try {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      setAvatarUploading(true);
-      if (file.size > 5 * 1024 * 1024) {
-        throw new Error("Maximální velikost souboru je 5 MB");
-      }
-      setError(null);
-      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `${user.uid}/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from("avatars")
-        .upload(path, file, { upsert: true, cacheControl: "3600" });
-      if (upErr) throw new Error(upErr.message);
-      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
-      const publicUrl = pub?.publicUrl || "";
-      if (!publicUrl) throw new Error("Nepodařilo se získat URL obrázku");
-      const { error: updErr } = await supabase.auth.updateUser({
-        data: { avatar_url: publicUrl, picture: publicUrl },
-      });
-      if (updErr) throw new Error(updErr.message);
-      setAvatarOverride(publicUrl);
-      if (profile) {
-        setProfile({ ...profile, avatarUrl: publicUrl });
-      }
-      try {
-        await authUtils.getCurrentUser();
-      } catch {}
-    } catch (err: any) {
-      setError(err?.message || "Nahrání profilové fotky selhalo");
-    } finally {
-      setAvatarUploading(false);
-      const input = document.getElementById(
-        "avatar-file-input"
-      ) as HTMLInputElement | null;
-      if (input) input.value = "";
-    }
-  };
 
   const handleRemoveCountry = async (iso2: string) => {
     if (!user) return;
@@ -408,12 +366,9 @@ export default function ProfilePage({
 
   if (!profile) return null;
 
-  const avatarUrl = avatarOverride ?? profile.avatarUrl;
-  const initials = profile.displayName
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
+  const avatarUrl = profile.avatarUrl;
+  const initials = (profile.nickname || profile.displayName)
+    .charAt(0)
     .toUpperCase();
   const isFriend = profile.isFollowedByMe && profile.isFollowingMe;
 
@@ -441,13 +396,6 @@ export default function ProfilePage({
               initials={initials}
               isOwnProfile={isOwnProfile}
               isFriend={isFriend}
-              avatarUploading={avatarUploading}
-              onAvatarClick={() => {
-                const input = document.getElementById(
-                  "avatar-file-input"
-                ) as HTMLInputElement | null;
-                input?.click();
-              }}
               onFollowToggle={handleFollowToggle}
               visitedCountriesCount={visitedCountries.length}
               articlesCount={articles.length}
@@ -465,13 +413,6 @@ export default function ProfilePage({
           )}
         </div>
 
-        <input
-          id="avatar-file-input"
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleAvatarUpload}
-        />
 
         {/* VLASTNÍ PROFIL - zobrazení podle tabu */}
         {isOwnProfile && (
