@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
   // Fix pro špatně odvozený kořen projektu při Turbopacku
   // (zabraňuje HMR chybám s global-error.js)
   turbopack: {
-    root: __dirname,
+    root: process.cwd(),
   },
 };
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Poppins } from "next/font/google";
+import localFont from "next/font/local";
 import "@/styles/globals.css";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -21,6 +22,12 @@ const poppins = Poppins({
   weight: ["400", "500", "600", "700"],
 });
 
+const marble = localFont({
+  src: "../../fonts/Marble Regular.woff2",
+  variable: "--font-marble",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Destinote",
   description: "Interaktivní mapa světa v Next.js",
@@ -37,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="cs">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${poppins.className} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${marble.variable} ${poppins.className} antialiased`}
       >
         <ToastProvider>
           <AuthProvider>

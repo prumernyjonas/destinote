@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import crypto from "crypto";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { getUserIdFromRequest } from "@/app/api/_utils/auth";
 
 function getEnv(name: string): string {
   const val = process.env[name];
@@ -29,37 +30,67 @@ function signParams(
 
 export async function POST(req: NextRequest) {
   try {
-    // Autorizace – vyžadujeme přihlášeného uživatele (cookies nebo Bearer token)
-    const supa = await createServerSupabaseClient();
-    const { data: auth } = await supa.auth.getUser();
-    let userId: string | null = auth.user?.id ?? null;
-    console.log("[upload] start, cookieUserId:", userId || null);
+    // Autorizace – zkusíme různé způsoby získání userId
+    console.log("[upload] ===== START =====");
+    
+    let userId: string | null = null;
+    
+    // 1. Zkusíme z x-user-id headeru (nejrychlejší)
+    const userIdFromHeader = req.headers.get("x-user-id");
+    if (userIdFromHeader) {
+      userId = userIdFromHeader;
+      console.log("[upload] ✓ userId from x-user-id header:", userId);
+    }
+    
+    // 2. Zkusíme ze session (cookies)
     if (!userId) {
-      const authHeader =
-        req.headers.get("authorization") || req.headers.get("Authorization");
-      const token = authHeader?.toLowerCase().startsWith("bearer ")
-        ? authHeader.slice(7)
-        : null;
-      if (token) {
-        console.log("[upload] found bearer token (length)", token.length);
-      } else {
-        console.log("[upload] no bearer token provided");
+      try {
+        const supa = await createServerSupabaseClient();
+        const { data: auth } = await supa.auth.getUser();
+        if (auth?.user?.id) {
+          userId = auth.user.id;
+          console.log("[upload] ✓ userId from cookies:", userId);
+        }
+      } catch (e) {
+        console.log("[upload] No userId from cookies:", (e as any)?.message || "error");
       }
-      if (token) {
-        const adminAuth = createAdminSupabaseClient();
-        const { data: tokenUser } = await adminAuth.auth.getUser(token);
-        if (tokenUser?.user?.id) {
-          userId = tokenUser.user.id;
-          console.log("[upload] resolved userId from bearer:", userId);
+    }
+    
+    // 3. Zkusíme z Bearer tokenu
+    if (!userId) {
+      const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+      console.log("[upload] authHeader present:", !!authHeader);
+      if (authHeader) {
+        const token = authHeader.toLowerCase().startsWith("bearer ")
+          ? authHeader.slice(7).trim()
+          : null;
+        if (token) {
+          console.log("[upload] found bearer token, length:", token.length);
+          try {
+            const adminAuth = createAdminSupabaseClient();
+            const { data: tokenUser, error: tokenError } = await adminAuth.auth.getUser(token);
+            if (tokenError) {
+              console.error("[upload] Error getting user from token:", tokenError.message);
+            } else if (tokenUser?.user?.id) {
+              userId = tokenUser.user.id;
+              console.log("[upload] ✓ userId from bearer token:", userId);
+            }
+          } catch (e: any) {
+            console.error("[upload] Exception getting user from token:", e?.message);
+          }
         }
       }
     }
+    
     if (!userId) {
-      console.warn("[upload] Unauthorized - no userId");
+      console.warn("[upload] ✗ Unauthorized - no userId found");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
+        headers: { "content-type": "application/json" },
       });
     }
+    
+    console.log("[upload] ✓ Authorized, userId:", userId);
 
     const form = await req.formData();
     const file = form.get("file") as unknown as File | null;

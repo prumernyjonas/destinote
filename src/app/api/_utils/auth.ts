@@ -39,17 +39,30 @@ export async function getUserIdFromRequest(
   // 4. Zkusíme z Bearer tokenu
   const authHeader =
     req.headers.get("authorization") || req.headers.get("Authorization");
+  console.log("[getUserIdFromRequest] authHeader present:", !!authHeader, "value:", authHeader ? `${authHeader.substring(0, 30)}...` : "null");
   const token =
     typeof authHeader === "string" &&
     authHeader.toLowerCase().startsWith("bearer ")
-      ? authHeader.slice(7)
+      ? authHeader.slice(7).trim()
       : null;
   if (token) {
+    console.log("[getUserIdFromRequest] found bearer token, length:", token.length, "first 20 chars:", token.substring(0, 20));
     try {
       const admin = createAdminSupabaseClient();
-      const { data: tokenUser } = await admin.auth.getUser(token);
-      if (tokenUser?.user?.id) return tokenUser.user.id;
-    } catch {}
+      const { data: tokenUser, error: tokenError } = await admin.auth.getUser(token);
+      if (tokenError) {
+        console.error("[getUserIdFromRequest] Error getting user from token:", tokenError.message, tokenError.status);
+      } else if (tokenUser?.user?.id) {
+        console.log("[getUserIdFromRequest] ✓ resolved userId from bearer:", tokenUser.user.id);
+        return tokenUser.user.id;
+      } else {
+        console.warn("[getUserIdFromRequest] Token user not found");
+      }
+    } catch (e: any) {
+      console.error("[getUserIdFromRequest] Exception resolving token:", e?.message, e?.stack);
+    }
+  } else {
+    console.log("[getUserIdFromRequest] no bearer token in header or invalid format");
   }
 
   return null;

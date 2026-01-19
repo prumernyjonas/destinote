@@ -234,7 +234,7 @@ export default function Navbar() {
             <div className="flex items-center space-x-3">
               <Link href="/" className="flex items-center space-x-2">
                 <Image
-                  src="/logo.png"
+                  src="/logo.svg"
                   alt="Destinote"
                   width={120}
                   height={26}
@@ -502,7 +502,7 @@ export default function Navbar() {
             <div className="flex items-center justify-between px-6 py-5 border-b border-blue-200 bg-[#cbe1f7]">
               <div className="flex items-center space-x-2">
                 <Image
-                  src="/logo.png"
+                  src="/logo.svg"
                   alt="Destinote"
                   width={140}
                   height={36}

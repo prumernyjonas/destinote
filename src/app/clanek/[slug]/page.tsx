@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import ArticleComments from "@/components/articles/ArticleComments";
+import ArticlePhotoGallery from "@/components/articles/ArticlePhotoGallery";
 import { slugifyNickname } from "@/utils/slugify";
 
 type ArticleRecord = {
@@ -21,6 +22,14 @@ type ArticleRecord = {
   main_image_width: number | null;
   main_image_height: number | null;
   destination: string | null;
+};
+
+type ArticlePhoto = {
+  id: string;
+  url: string;
+  alt: string | null;
+  width: number | null;
+  height: number | null;
 };
 
 type CountryInfo = {
@@ -96,6 +105,43 @@ async function getAuthorInfo(authorId: string): Promise<AuthorInfo> {
   return data as AuthorInfo;
 }
 
+async function getArticlePhotos(articleId: string, mainImageUrl: string | null): Promise<ArticlePhoto[]> {
+  const admin = createAdminSupabaseClient();
+  const { data, error } = await admin
+    .from("article_photos")
+    .select("id, url, alt, width, height")
+    .eq("article_id", articleId)
+    .order("created_at", { ascending: true });
+
+  if (error || !data) {
+    return [];
+  }
+
+  // Pokud existuje hlavní obrázek, ujistíme se, že je první
+  // Pokud hlavní obrázek není v article_photos, přidáme ho na začátek
+  const photos = [...data];
+  
+  if (mainImageUrl) {
+    const mainPhotoIndex = photos.findIndex(p => p.url === mainImageUrl);
+    if (mainPhotoIndex > 0) {
+      // Přesunout hlavní fotku na začátek
+      const mainPhoto = photos.splice(mainPhotoIndex, 1)[0];
+      photos.unshift(mainPhoto);
+    } else if (mainPhotoIndex === -1) {
+      // Hlavní fotka není v article_photos, přidáme ji na začátek
+      photos.unshift({
+        id: `main-${articleId}`,
+        url: mainImageUrl,
+        alt: null,
+        width: null,
+        height: null,
+      });
+    }
+  }
+
+  return photos;
+}
+
 function formatDate(value: string | null) {
   if (!value) return null;
   try {
@@ -166,6 +212,7 @@ export default async function ArticlePage({
 
   const country = await getCountryInfo(article.destination);
   const author = await getAuthorInfo(article.author_id);
+  const photos = await getArticlePhotos(article.id, article.main_image_url);
   const publishedLabel =
     formatDate(article.published_at) || formatDate(article.created_at);
 
@@ -216,10 +263,12 @@ export default async function ArticlePage({
           ) : null}
         </div>
 
-        {/* Hlavní obsah - obrázek vlevo, text vpravo */}
+        {/* Hlavní obsah - galerie fotek vlevo, text vpravo */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
-          {/* Obrázek vlevo */}
-          {article.main_image_url ? (
+          {/* Galerie fotek vlevo */}
+          {photos.length > 0 ? (
+            <ArticlePhotoGallery photos={photos} articleTitle={article.title} />
+          ) : article.main_image_url ? (
             <div className="relative w-full aspect-[16/9] overflow-hidden rounded-xl bg-gray-100 shadow-lg">
               <Image
                 src={article.main_image_url}
