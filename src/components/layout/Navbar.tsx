@@ -233,10 +233,15 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-20">
             {/* Left: Logo */}
             <div className="flex items-center space-x-3">
-              <Link href="/" className="flex items-center space-x-2">
-                <span className={`${marble.variable} text-2xl md:text-3xl font-normal text-blue-900`} style={{ fontFamily: 'var(--font-marble)' }}>
-                  Destinote
-                </span>
+              <Link href="/" className={`${marble.variable} flex items-center space-x-2`}>
+                <Image
+                  src="/logo.svg"
+                  alt="Destinote"
+                  width={120}
+                  height={26}
+                  priority
+                  className="h-8 w-auto md:h-9"
+                />
               </Link>
             </div>
 
@@ -496,10 +501,14 @@ export default function Navbar() {
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-blue-200 bg-[#cbe1f7]">
-              <div className="flex items-center space-x-2">
-                <span className={`${marble.variable} text-2xl font-normal text-blue-900`} style={{ fontFamily: 'var(--font-marble)' }}>
-                  Destinote
-                </span>
+              <div className={`${marble.variable} flex items-center space-x-2`}>
+                <Image
+                  src="/logo.svg"
+                  alt="Destinote"
+                  width={140}
+                  height={36}
+                  className="h-8 w-auto"
+                />
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}
