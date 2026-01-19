@@ -39,7 +39,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const params = useSearchParams();
   const router = useRouter();
-  const { user, logout, loading: authLoading } = useAuth();
+  const { user, logout, loading: authLoading, refreshUser } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [countriesOpen, setCountriesOpen] = useState(false);
@@ -99,22 +99,40 @@ export default function Navbar() {
   // Retry mechanismus pro načítání uživatele, pokud se nenačte
   useEffect(() => {
     if (mounted && !authLoading && !user) {
-      // Pokud se user nenačte po 2 sekundách, zkusíme znovu
-      const timeout = setTimeout(() => {
-        // Force refresh auth state
+      // Pokud se user nenačte po 1 sekundě, zkusíme refresh
+      const timeout = setTimeout(async () => {
+        // Zkontrolovat, jestli existuje session
         if (typeof window !== "undefined") {
-          supabase.auth.getSession().then(({ data }) => {
+          try {
+            const { data } = await supabase.auth.getSession();
             if (data.session && !user) {
               // Session existuje, ale user se nenačetl - zkusíme refresh
-              window.location.reload();
+              console.log("[Navbar] Session existuje, ale user chybí, zkouším refreshUser...");
+              if (refreshUser) {
+                try {
+                  await refreshUser();
+                } catch (err) {
+                  console.error("[Navbar] Chyba při refreshUser:", err);
+                  // Pokud refresh selže, zkusit reload jako poslední možnost
+                  const retryTimeout = setTimeout(() => {
+                    if (!user) {
+                      console.warn("[Navbar] Refresh selhal, reloaduji stránku...");
+                      window.location.reload();
+                    }
+                  }, 2000);
+                  return () => clearTimeout(retryTimeout);
+                }
+              }
             }
-          });
+          } catch (err) {
+            console.error("[Navbar] Chyba při kontrole session:", err);
+          }
         }
-      }, 2000);
+      }, 1000);
 
       return () => clearTimeout(timeout);
     }
-  }, [mounted, authLoading, user]);
+  }, [mounted, authLoading, user, refreshUser]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {

@@ -377,10 +377,22 @@ export const authUtils = {
         this.clearCachedUser();
         return null;
       }
+      // Pro jiné chyby zkusit použít cached user jako fallback
+      const cached = this.getCachedUser();
+      if (cached) {
+        console.warn("[getCurrentUser] Auth error, použiji cached user:", error.message);
+        return cached;
+      }
       throw new Error(error.message);
     }
     const sbUser = data.user;
     if (!sbUser) {
+      // Zkusit použít cached user jako fallback
+      const cached = this.getCachedUser();
+      if (cached) {
+        console.warn("[getCurrentUser] Žádný sbUser, použiji cached user");
+        return cached;
+      }
       this.clearCachedUser();
       this.clearSupabaseStorage();
       return null;
@@ -390,7 +402,15 @@ export const authUtils = {
     // Použít cache-busting pro zajištění, že se načte aktuální data
     let dbNickname: string | undefined;
     let dbAvatarUrl: string | null | undefined;
+    let apiFailed = false;
+    
     try {
+      // Přidat timeout pro API request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 10000); // 10 sekund timeout
+
       // Přidat timestamp pro cache-busting
       const timestamp = Date.now();
       const res = await fetch(`/api/users/${sbUser.id}?t=${timestamp}`, {
@@ -399,7 +419,10 @@ export const authUtils = {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
         },
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+      
       if (res.ok) {
         const json = await res.json();
         dbNickname = json.data?.nickname;
@@ -412,9 +435,23 @@ export const authUtils = {
         });
       } else {
         console.warn("[getCurrentUser] API request failed:", res.status, res.statusText);
+        apiFailed = true;
       }
-    } catch {
-      // Ignorovat chybu - použije se fallback
+    } catch (fetchErr: any) {
+      console.warn("[getCurrentUser] API request error:", fetchErr.message || fetchErr);
+      apiFailed = true;
+    }
+
+    // Pokud API selhalo, zkusit použít cached user jako fallback
+    if (apiFailed) {
+      const cached = this.getCachedUser();
+      if (cached && cached.uid === sbUser.id) {
+        console.warn("[getCurrentUser] API selhalo, použiji cached user pro:", sbUser.id);
+        // Aktualizovat cache s aktuálními daty ze Supabase (i když API selhalo)
+        const user = mapSupabaseUserToAppUser(sbUser, cached.nickname, cached.photoURL || null);
+        this.setCachedUser(user);
+        return user;
+      }
     }
 
     const user = mapSupabaseUserToAppUser(sbUser, dbNickname, dbAvatarUrl);
