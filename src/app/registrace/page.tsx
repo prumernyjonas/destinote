@@ -462,13 +462,13 @@ export default function RegisterPage() {
                 className="ml-2 block text-sm text-gray-900 cursor-pointer"
               >
                 Souhlasím s{" "}
-                <a href="/podminky" className="text-green-600 hover:text-green-500 transition-colors">
+                <Link href="/podminky" className="text-green-600 hover:text-green-500 transition-colors">
                   podmínkami použití
-                </a>{" "}
+                </Link>{" "}
                 a{" "}
-                <a href="/ochrana-udaju" className="text-green-600 hover:text-green-500 transition-colors">
+                <Link href="/ochrana" className="text-green-600 hover:text-green-500 transition-colors">
                   zásadami ochrany osobních údajů
-                </a>
+                </Link>
               </label>
             </div>
 

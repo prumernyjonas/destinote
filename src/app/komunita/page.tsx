@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import Link from "next/link";
 import Image from "next/image";
+import { FiMapPin } from "react-icons/fi";
 
 type Article = {
   id: string;
@@ -43,9 +44,6 @@ export default function CommunityPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const [tab, setTab] = useState<"feed" | "top" | "following" | "friends">(
-    "feed"
-  );
   const [articles, setArticles] = useState<Article[]>([]);
   const [allArticles, setAllArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,20 +135,10 @@ export default function CommunityPage() {
       setLoading(true);
       setError(null);
       try {
-        let url = "/api/articles";
-
-        // Přidat query parametry podle zvoleného tabu
-        if (tab === "following" && user) {
-          url = `/api/articles?following=true&userId=${user.uid}`;
-        } else if (tab === "friends" && user) {
-          url = `/api/articles?friends=true&userId=${user.uid}`;
-        }
+        const url = "/api/articles";
 
         const res = await fetch(url);
         if (!res.ok) {
-          if (res.status === 401 && (tab === "following" || tab === "friends")) {
-            throw new Error("Pro zobrazení článků od sledovaných je potřeba přihlášení");
-          }
           throw new Error("Nepodařilo se načíst články");
         }
         const data = await res.json();
@@ -162,7 +150,7 @@ export default function CommunityPage() {
       }
     }
     loadArticles();
-  }, [tab, user]);
+  }, []);
 
   // Filtrování a řazení článků
   useEffect(() => {
@@ -374,26 +362,6 @@ export default function CommunityPage() {
           )}
         </div>
 
-        <nav className="flex items-center gap-6 border-b pb-2">
-          {[
-            { key: "feed", label: "Feed" },
-            { key: "top", label: "Top" },
-            { key: "following", label: "Sleduji" },
-            { key: "friends", label: "Přátelé" },
-          ].map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key as typeof tab)}
-              className={`border-b-2 py-2 text-sm font-medium cursor-pointer ${
-                tab === t.key
-                  ? "border-green-500 text-green-600"
-                  : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
@@ -421,27 +389,7 @@ export default function CommunityPage() {
             ))
           ) : articles.length === 0 ? (
             <div className="col-span-full text-center py-12 text-gray-600">
-              {tab === "following" && !user ? (
-                <div>
-                  <p className="mb-4">Pro zobrazení článků od sledovaných se přihlaste.</p>
-                  <Link href="/prihlaseni">
-                    <Button>Přihlásit se</Button>
-                  </Link>
-                </div>
-              ) : tab === "following" ? (
-                <p>Zatím nesledujete nikoho, kdo by měl schválené články.</p>
-              ) : tab === "friends" && !user ? (
-                <div>
-                  <p className="mb-4">Pro zobrazení článků od přátel se přihlaste.</p>
-                  <Link href="/prihlaseni">
-                    <Button>Přihlásit se</Button>
-                  </Link>
-                </div>
-              ) : tab === "friends" ? (
-                <p>Zatím nemáte žádné přátele (vzájemné sledování) s články.</p>
-              ) : (
-                <p>Zatím nejsou žádné schválené články.</p>
-              )}
+              <p>Zatím nejsou žádné schválené články.</p>
             </div>
           ) : (
             articles.map((article) => (
@@ -464,7 +412,7 @@ export default function CommunityPage() {
                       {article.destination && (
                         <div className="absolute top-3 left-3">
                           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-full">
-                            <span className="text-[10px]">📍</span>
+                            <FiMapPin className="w-3 h-3" />
                             <span>{article.destination}</span>
                           </span>
                         </div>
@@ -477,7 +425,7 @@ export default function CommunityPage() {
                       {article.destination && (
                         <div className="absolute top-3 left-3">
                           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm">
-                            <span className="text-[10px]">📍</span>
+                            <FiMapPin className="w-3 h-3" />
                             <span>{article.destination}</span>
                           </span>
                         </div>

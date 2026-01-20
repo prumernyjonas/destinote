@@ -7,6 +7,7 @@ import {
   useContext,
   createContext,
   ReactNode,
+  useRef,
 } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { authUtils } from "@/utils/supabase";
@@ -31,45 +32,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Flag pro sledování probíhajícího login procesu
+  const isLoggingInRef = useRef(false);
+  
+  // Debug logování pro diagnostiku
+  useEffect(() => {
+    console.log("[useAuth] Loading stav změněn:", loading, "User:", user ? "přihlášen" : "nepřihlášen", "isLoggingIn:", isLoggingInRef.current);
+  }, [loading, user]);
 
   useEffect(() => {
     let isMounted = true;
 
     const init = async () => {
+      // Timeout pro zajištění, že loading se vždy resetuje
+      const loadingTimeout = setTimeout(() => {
+        if (isMounted) {
+          console.warn("[useAuth] Timeout při inicializaci, resetuji loading");
+          setLoading(false);
+        }
+      }, 5000); // 5 sekund timeout
+
       try {
         // 1) Eager rehydratace z cache (okamžitě, bez čekání na síť)
         const cached = authUtils.getCachedUser();
         if (isMounted && cached) {
           // Vždy zobrazit cached user, i když nemá nickname - UI musí fungovat
           setUser(cached);
+          setError(null);
           // UI může pokračovat bez čekání na síť
           setLoading(false);
+          clearTimeout(loadingTimeout);
           
-          // Pokud cached user nemá nickname, načíst ho na pozadí
-          if (!cached.nickname) {
-            console.log("[useAuth] Cached user nemá nickname, načítám na pozadí...");
-            // Načíst na pozadí, ale neblokovat UI
-            authUtils.getCurrentUser()
-              .then((current) => {
-                if (isMounted && current) {
-                  setUser(current);
-                }
-              })
-              .catch((err) => {
-                console.error("[useAuth] Chyba při načítání nicknamu na pozadí:", err);
-                // Nechat cached user, UI už funguje
-              });
-          }
+          // Vždy na pozadí načíst aktualizace z DB (nickname, avatar se mohly změnit)
+          // To zajistí, že i po změně profilu se načtou nejnovější data
+          console.log("[useAuth] Načítám aktualizace uživatele na pozadí...");
+          authUtils.getCurrentUser()
+            .then((current) => {
+              if (isMounted && current) {
+                // Aktualizovat user pouze pokud se data změnila (aby se předešlo zbytečným re-renderům)
+                setUser((prev) => {
+                  if (!prev || 
+                      prev.nickname !== current.nickname || 
+                      prev.photoURL !== current.photoURL ||
+                      prev.nicknameSlug !== current.nicknameSlug) {
+                    return current;
+                  }
+                  return prev;
+                });
+              }
+            })
+            .catch((err) => {
+              console.warn("[useAuth] Chyba při načítání aktualizací na pozadí:", err.message);
+              // Nechat cached user, UI už funguje
+            });
+          // Pokud máme cached user, ukončit inicializaci - už jsme nastavili loading na false
+          return;
         }
 
         // 2) Síťové ověření aktuální session u Supabase (pokud nemáme cached user)
-        if (!cached) {
-          const current = await authUtils.getCurrentUser();
-          if (!isMounted) return;
-          // Vždy nastavit user, i když je null (pro správné zobrazení)
-          setUser(current);
-          setError(null);
-        }
+        const current = await authUtils.getCurrentUser();
+        if (!isMounted) return;
+        // Vždy nastavit user, i když je null (pro správné zobrazení)
+        setUser(current);
+        setError(null);
+        clearTimeout(loadingTimeout);
       } catch (err: any) {
         if (!isMounted) return;
         console.error("Chyba při načítání uživatele:", err);
@@ -83,23 +109,134 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setError(err.message);
           setUser(null);
         }
+        clearTimeout(loadingTimeout);
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          console.log("[useAuth] Inicializace dokončena, nastavuji loading na false");
+          setLoading(false);
+          clearTimeout(loadingTimeout);
+        }
       }
     };
 
     init();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange(async () => {
-      try {
-        const current = await authUtils.getCurrentUser();
-        if (!isMounted) return;
-        setUser(current);
+    const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+      
+      console.log("[useAuth] onAuthStateChange event:", event, "session:", !!session, "isLoggingIn:", isLoggingInRef.current);
+      
+      // Pokud je to explicitní odhlášení, nastavit user na null
+      if (event === "SIGNED_OUT") {
+        setUser(null);
         setError(null);
+        setLoading(false);
+        isLoggingInRef.current = false;
+        return;
+      }
+
+      // Pokud právě probíhá login, použít cached user okamžitě a neblokovat UI
+      // Login funkce už nastavila user a loading, takže jen zajistíme, že loading zůstane false
+      if (isLoggingInRef.current && event === "SIGNED_IN") {
+        const cached = authUtils.getCachedUser();
+        if (cached) {
+          console.log("[useAuth] onAuthStateChange během login - používám cached user, loading zůstává false");
+          setUser(cached);
+          setError(null);
+          setLoading(false);
+          
+          // Na pozadí načíst aktualizace (nickname, avatar z DB)
+          authUtils.getCurrentUser()
+            .then((current) => {
+              if (isMounted && current) {
+                setUser(current);
+              }
+              isLoggingInRef.current = false;
+            })
+            .catch((err) => {
+              console.warn(`[useAuth] onAuthStateChange ${event}: Chyba při načítání aktualizací na pozadí:`, err.message);
+              isLoggingInRef.current = false;
+            });
+          return;
+        }
+      }
+
+      // Pro všechny eventy kromě SIGNED_OUT použít cached user okamžitě
+      // a načíst aktualizace na pozadí, aby se UI neblokovalo
+      const cached = authUtils.getCachedUser();
+      if (cached) {
+        // Okamžitě nastavit cached user, aby UI fungovalo
+        setUser(cached);
+        setError(null);
+        setLoading(false);
+        
+        // Na pozadí načíst aktualizace (nickname, avatar z DB)
+        // NEPOUŽÍVAT await, aby se UI neblokovalo
+        authUtils.getCurrentUser()
+          .then((current) => {
+            if (isMounted && current) {
+              setUser(current);
+            }
+          })
+          .catch((err) => {
+            console.warn(`[useAuth] onAuthStateChange ${event}: Chyba při načítání aktualizací na pozadí:`, err.message);
+            // Nechat cached user, UI už funguje
+          });
+        return;
+      }
+
+      // Pokud nemáme cached user, zkusit načíst z API, ale s timeoutem
+      // a nenastavovat loading na true, aby se UI neblokovalo
+      try {
+        // Použít Promise.race s timeoutem, aby se nečekalo příliš dlouho
+        const timeoutPromise = new Promise<null>((resolve) => 
+          setTimeout(() => resolve(null), 3000)
+        );
+        
+        const currentPromise = authUtils.getCurrentUser();
+        const current = await Promise.race([currentPromise, timeoutPromise]);
+        
+        if (!isMounted) return;
+        
+        if (current) {
+          setUser(current);
+          setError(null);
+        } else {
+          // Timeout - použít null user, ale neblokovat UI
+          console.warn(`[useAuth] onAuthStateChange ${event}: Timeout při načítání uživatele`);
+          setUser(null);
+          setError(null);
+        }
+        setLoading(false);
       } catch (err: any) {
         if (!isMounted) return;
+        
+        // Pokud je to chyba o chybějící session, nastavit user na null
+        const errorMsg = (err.message || "").toLowerCase();
+        if (errorMsg.includes("auth session missing") || errorMsg.includes("session")) {
+          // Zkontrolovat, jestli skutečně není session
+          try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (!sessionData.session) {
+              setUser(null);
+              setError(null);
+              setLoading(false);
+              return;
+            }
+          } catch {
+            // Pokud ani getSession nefunguje, nastavit na null
+            setUser(null);
+            setError(null);
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // Pro síťové chyby nebo timeout nastavit na null, ale neblokovat UI
+        console.warn(`[useAuth] onAuthStateChange ${event}: Chyba při načítání uživatele:`, err.message);
         setError(err.message);
         setUser(null);
+        setLoading(false);
       }
     });
 
@@ -110,16 +247,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
+    let loginTimeout: NodeJS.Timeout | null = null;
     try {
+      console.log("[useAuth] Login začíná, nastavuji loading na true a isLoggingIn flag");
       setError(null);
       setLoading(true);
+      isLoggingInRef.current = true;
+      
+      // Timeout pro zajištění, že loading se vždy resetuje
+      loginTimeout = setTimeout(() => {
+        console.warn("[useAuth] Timeout při login, resetuji loading");
+        setLoading(false);
+        isLoggingInRef.current = false;
+      }, 15000); // 15 sekund timeout
+      
+      console.log("[useAuth] Volám authUtils.login...");
       const userData = await authUtils.login(credentials);
+      
+      // Okamžitě nastavit user a resetovat loading, aby UI mohlo pokračovat
+      // onAuthStateChange se spustí asynchronně a může načíst aktualizace na pozadí
+      if (loginTimeout) {
+        clearTimeout(loginTimeout);
+        loginTimeout = null;
+      }
+      console.log("[useAuth] Login úspěšný, nastavuji user a resetuji loading");
       setUser(userData);
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    } finally {
+      setError(null);
       setLoading(false);
+      // isLoggingIn flag se resetuje v onAuthStateChange po načtení aktualizací
+    } catch (err: any) {
+      if (loginTimeout) {
+        clearTimeout(loginTimeout);
+        loginTimeout = null;
+      }
+      console.error("[useAuth] Login selhal:", err.message);
+      setError(err.message);
+      setLoading(false);
+      isLoggingInRef.current = false;
+      throw err;
     }
   };
 

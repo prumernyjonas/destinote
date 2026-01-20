@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,32 +16,75 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
-  const { login, loading, error, user } = useAuth();
+  const { login, loading: authLoading, error, user } = useAuth();
   const router = useRouter();
   const toast = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
+  const isMountedRef = useRef(true);
+  const toastShownRef = useRef<string | null>(null);
+  
+  // Na login stránce ignorujeme authLoading pokud uživatel není přihlášen
+  // (protože na login stránce nepotřebujeme čekat na načtení uživatele)
+  const loading = user ? authLoading : false;
+  
+  // Debug logování pro diagnostiku
+  useEffect(() => {
+    console.log("[LoginPage] Debug stav:", {
+      submitting,
+      loading,
+      authLoading,
+      user: user ? "přihlášen" : "nepřihlášen",
+      disabled: submitting || loading,
+    });
+  }, [submitting, loading, authLoading, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
 
+    console.log("[LoginPage] handleSubmit začíná, nastavuji submitting na true");
+    setSubmitting(true);
+
+    // Timeout pro zajištění, že submitting se vždy resetuje
+    const submittingTimeout = setTimeout(() => {
+      if (isMountedRef.current) {
+        console.warn("[LoginPage] Timeout při přihlášení, resetuji submitting");
+        setSubmitting(false);
+        toast.error("Přihlášení trvá příliš dlouho. Zkuste to prosím znovu.");
+      }
+    }, 10000); // 10 sekund timeout
+
     try {
-      setSubmitting(true);
+      console.log("[LoginPage] Volám login funkci...");
       await login({ email, password });
-      toast.success("Přihlášení proběhlo úspěšně.");
-      
-      // Zkontroluj redirect parametr z URL
-      const redirect = searchParams?.get("redirect");
-      const redirectPath = redirect && redirect.startsWith("/") ? redirect : "/";
-      router.replace(redirectPath);
+      clearTimeout(submittingTimeout);
+      console.log("[LoginPage] Login úspěšný");
+      if (isMountedRef.current) {
+        toast.success("Přihlášení proběhlo úspěšně.");
+        // Přesměrování proběhne automaticky přes useEffect, který sleduje změnu user
+        // submitting se resetuje v useEffect, když se user nastaví
+        // Pro jistotu přidáme timeout, aby se submitting resetoval i když se user nenastaví
+        setTimeout(() => {
+          if (isMountedRef.current && !user) {
+            console.log("[LoginPage] Timeout: resetuji submitting na false (user se nenastavil)");
+            setSubmitting(false);
+          }
+        }, 2000);
+      }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Chyba při přihlášení");
-      setLocalError(err instanceof Error ? err.message : "Neznámá chyba");
+      clearTimeout(submittingTimeout);
+      console.error("[LoginPage] Login selhal:", err);
+      if (isMountedRef.current) {
+        toast.error(err instanceof Error ? err.message : "Chyba při přihlášení");
+        setLocalError(err instanceof Error ? err.message : "Neznámá chyba");
+        setSubmitting(false);
+      }
     } finally {
-      setSubmitting(false);
+      // Zajistit, že timeout se vždy vyčistí
+      clearTimeout(submittingTimeout);
     }
   };
 
@@ -49,16 +92,19 @@ export default function LoginPage() {
   // (vyhneme se změnám stavu během renderu pro SSR/CSR shodu)
   useEffect(() => {
     const err = searchParams?.get("error");
-    if (err) {
+    if (err && toastShownRef.current !== `error-${err}`) {
       setLocalError(err);
       toast.error(err);
+      toastShownRef.current = `error-${err}`;
     }
     const message = searchParams?.get("message");
-    if (message === "email-confirmation") {
+    if (message === "email-confirmation" && toastShownRef.current !== "email-confirmation") {
       toast.success("Zkontrolujte svůj email a potvrďte registraci kliknutím na odkaz v emailu.");
+      toastShownRef.current = "email-confirmation";
     }
-    if (message === "password-reset-success") {
+    if (message === "password-reset-success" && toastShownRef.current !== "password-reset-success") {
       toast.success("Heslo bylo úspěšně změněno. Nyní se můžete přihlásit.");
+      toastShownRef.current = "password-reset-success";
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -66,11 +112,23 @@ export default function LoginPage() {
   // Pokud je uživatel již přihlášen (např. po návratu z OAuth), přesměruj podle redirect parametru
   useEffect(() => {
     if (user) {
+      console.log("[LoginPage] User je přihlášen, resetuji submitting a přesměrovávám");
+      // Resetovat submitting stav, pokud je uživatel přihlášen
+      if (isMountedRef.current) {
+        setSubmitting(false);
+      }
       const redirect = searchParams?.get("redirect");
       const redirectPath = redirect && redirect.startsWith("/") ? redirect : "/";
       router.replace(redirectPath);
     }
   }, [user, router, searchParams]);
+
+  // Cleanup při unmountu
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleGoogleLogin = async () => {
     try {

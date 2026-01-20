@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { FiGlobe, FiMap, FiSearch, FiX } from "react-icons/fi";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 interface SearchResult {
   articles: Array<{
@@ -129,9 +130,8 @@ export default function SearchPage() {
 
         {/* Results */}
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-blue-600">Hledám...</p>
+          <div className="flex justify-center py-12">
+            <LoadingSpinner text="Hledám..." />
           </div>
         ) : query.trim().length < 2 ? (
           <div className="text-center py-12">

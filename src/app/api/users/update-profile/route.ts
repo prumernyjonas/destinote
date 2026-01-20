@@ -53,6 +53,8 @@ export async function PATCH(req: NextRequest) {
     }
 
     const supabase = await createServerSupabaseClient();
+    // Vytvořit admin klienta pro aktualizaci databáze (obejde RLS)
+    const admin = createAdminSupabaseClient();
 
     const body = await req.json();
     const { nickname } = body;

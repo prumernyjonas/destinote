@@ -5,12 +5,14 @@ import { cn } from "@/utils/cn";
 interface LoadingSpinnerProps extends HTMLAttributes<HTMLDivElement> {
   size?: "sm" | "md" | "lg";
   text?: string;
+  fullPage?: boolean;
 }
 
 export function LoadingSpinner({
   className,
   size = "md",
   text,
+  fullPage = false,
   ...props
 }: LoadingSpinnerProps) {
   const sizes = {
@@ -19,11 +21,8 @@ export function LoadingSpinner({
     lg: "h-12 w-12",
   };
 
-  return (
-    <div
-      className={cn("flex flex-col items-center justify-center", className)}
-      {...props}
-    >
+  const spinner = (
+    <>
       <svg
         className={cn("animate-spin text-green-600", sizes[size])}
         fill="none"
@@ -43,7 +42,30 @@ export function LoadingSpinner({
           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
         />
       </svg>
-      {text && <p className="mt-2 text-sm text-gray-600">{text}</p>}
+      {text && <p className="mt-3 text-sm text-gray-600">{text}</p>}
+    </>
+  );
+
+  if (fullPage) {
+    return (
+      <div
+        className={cn(
+          "min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-[#cbe1f7] to-white",
+          className
+        )}
+        {...props}
+      >
+        {spinner}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn("flex flex-col items-center justify-center", className)}
+      {...props}
+    >
+      {spinner}
     </div>
   );
 }

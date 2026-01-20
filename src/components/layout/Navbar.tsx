@@ -67,18 +67,47 @@ export default function Navbar() {
     if (user) {
       setCachedUser(user);
     } else if (!authLoading) {
-      // Pokud authLoading je false a user je null, zkusit načíst cached user
-      const cached = authUtils.getCachedUser();
-      if (cached) {
-        setCachedUser(cached);
-      } else {
-        setCachedUser(null);
-      }
+      // Pokud authLoading je false a user je null, zkontrolovat, jestli existuje session
+      // Pokud ne, vymazat cached user (uživatel se odhlásil)
+      const checkSession = async () => {
+        try {
+          const { data } = await supabase.auth.getSession();
+          if (!data.session) {
+            // Session neexistuje - uživatel je odhlášen, vymazat cached user
+            setCachedUser(null);
+            // Také vymazat z localStorage pro jistotu
+            authUtils.clearCachedUser();
+          } else {
+            // Session existuje, ale user není načten - zkusit načíst cached user
+            const cached = authUtils.getCachedUser();
+            if (cached) {
+              setCachedUser(cached);
+            } else {
+              setCachedUser(null);
+            }
+          }
+        } catch (err) {
+          // Při chybě vymazat cached user
+          console.warn("[Navbar] Chyba při kontrole session:", err);
+          setCachedUser(null);
+          authUtils.clearCachedUser();
+        }
+      };
+      checkSession();
     }
   }, [user, authLoading]);
+
+  // Když probíhá odhlášení, okamžitě vymazat cached user
+  useEffect(() => {
+    if (loggingOut) {
+      setCachedUser(null);
+      authUtils.clearCachedUser();
+    }
+  }, [loggingOut]);
   
   // Použít user nebo cachedUser pro zobrazení
-  const displayUser = user || cachedUser;
+  // Ale pouze pokud není právě probíhající odhlášení
+  const displayUser = (!loggingOut && (user || cachedUser)) || null;
   
   // menuItems musí být useMemo, aby se přepočítaly když se změní isAdmin
   const menuItems = useMemo(() => [

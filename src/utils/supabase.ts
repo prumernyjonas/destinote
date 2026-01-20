@@ -141,23 +141,79 @@ export const authUtils = {
     } catch {}
   },
   async login(credentials: LoginCredentials): Promise<User> {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: credentials.email,
-      password: credentials.password,
-    });
+    console.log("[authUtils] login začíná pro email:", credentials.email);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
 
-    if (error) {
-      throw new Error(error.message);
+      console.log("[authUtils] signInWithPassword odpověď:", { 
+        hasData: !!data, 
+        hasUser: !!data?.user, 
+        error: error?.message 
+      });
+
+      if (error) {
+        console.error("[authUtils] Login error:", error.message);
+        throw new Error(error.message);
+      }
+
+      if (!data.user) {
+        console.error("[authUtils] Login selhal - žádný user");
+        throw new Error("Přihlášení selhalo – uživatel není dostupný");
+      }
+
+      console.log("[authUtils] Mapuji user...");
+      // Nejdřív vytvořit základní user objekt z metadata (rychlé)
+      const basicUser = mapSupabaseUserToAppUser(data.user, undefined, undefined);
+      // Uložit do cache OKAMŽITĚ před jakýmkoli dalšími operacemi,
+      // aby onAuthStateChange mohl použít cached user
+      this.setCachedUser(basicUser);
+      console.log("[authUtils] Login úspěšný, základní user uložen do cache:", {
+        uid: basicUser.uid,
+        email: basicUser.email,
+        nickname: basicUser.nickname
+      });
+      
+      // Na pozadí načíst nickname a avatar z DB (pokud API selže, použije se basicUser)
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 sekund timeout
+        
+        const timestamp = Date.now();
+        const res = await fetch(`/api/users/${data.user.id}?t=${timestamp}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+          },
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        
+        if (res.ok) {
+          const json = await res.json();
+          const dbNickname = json.data?.nickname;
+          const dbAvatarUrl = json.data?.avatarUrl;
+          
+          // Aktualizovat user s daty z DB
+          const fullUser = mapSupabaseUserToAppUser(data.user, dbNickname, dbAvatarUrl);
+          this.setCachedUser(fullUser);
+          console.log("[authUtils] User aktualizován s daty z DB");
+          return fullUser;
+        }
+      } catch (fetchErr: any) {
+        // Pokud API selže, použít basicUser - UI už funguje
+        console.warn("[authUtils] API selhalo při načítání user dat:", fetchErr.message);
+      }
+      
+      // Vrátit basicUser (s daty z metadata)
+      return basicUser;
+    } catch (err: any) {
+      console.error("[authUtils] Login exception:", err.message || err);
+      throw err;
     }
-
-    if (!data.user) {
-      throw new Error("Přihlášení selhalo – uživatel není dostupný");
-    }
-
-    const user = mapSupabaseUserToAppUser(data.user, undefined, undefined);
-    // Uložení do cache pro rychlou rehydrataci po refreshi
-    this.setCachedUser(user);
-    return user;
   },
 
   async register(credentials: RegisterCredentials): Promise<User> {
@@ -373,9 +429,32 @@ export const authUtils = {
     if (error) {
       const normalized = (error.message || "").toLowerCase();
       if (normalized.includes("auth session missing")) {
-        // Session chybí – vyčistit i lokální cache, aby neblikalo
-        this.clearCachedUser();
-        return null;
+        // Před vymazáním cache zkontrolovat, jestli skutečně není session
+        // (může to být dočasná síťová chyba)
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (!sessionData.session) {
+            // Session skutečně chybí – vyčistit cache
+            this.clearCachedUser();
+            return null;
+          }
+          // Session existuje, ale getUser() selhal - použít cached user jako fallback
+          const cached = this.getCachedUser();
+          if (cached) {
+            console.warn("[getCurrentUser] getUser() selhal, ale session existuje, použiji cached user:", error.message);
+            return cached;
+          }
+        } catch (sessionErr) {
+          // Pokud ani getSession() nefunguje, použít cached user jako fallback
+          const cached = this.getCachedUser();
+          if (cached) {
+            console.warn("[getCurrentUser] getSession() selhal, použiji cached user:", error.message);
+            return cached;
+          }
+          // Pokud nemáme cached user, vymazat cache a vrátit null
+          this.clearCachedUser();
+          return null;
+        }
       }
       // Pro jiné chyby zkusit použít cached user jako fallback
       const cached = this.getCachedUser();

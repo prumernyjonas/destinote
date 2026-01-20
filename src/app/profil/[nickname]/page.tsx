@@ -431,7 +431,7 @@ export default function ProfilePage({
   // NENECHAT blokovat authLoading - pokud máme profil, zobrazit ho
   // Zobrazit loading pouze pokud opravdu načítáme profil (loading) a nemáme ho
   if (!profile && (loading || (authLoading && !user))) {
-    return <LoadingSpinner text="Načítání profilu..." />;
+    return <LoadingSpinner text="Načítání profilu..." fullPage />;
   }
 
   if (error && !profile) {
