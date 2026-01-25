@@ -199,7 +199,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Globe Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      <section className="relative overflow-hidden bg-linear-to-b from-slate-950 via-slate-900 to-slate-950">
         {/* Světelné efekty na pozadí */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl" />
@@ -254,7 +254,7 @@ export default function Home() {
               transition={{ delay: 0.6, duration: 0.6 }}
               className="relative z-20 flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
-              <Link href="/zeme">
+              <Link href="/registrace">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -264,7 +264,7 @@ export default function Home() {
                   </Button>
                 </motion.div>
               </Link>
-              <Link href="/registrace">
+              <Link href="/zeme">
                 <motion.div
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -390,7 +390,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <div className="h-[380px] sm:h-[420px] lg:h-[500px] bg-travel-50">
+          <div className="h-95 sm:h-105 lg:h-125 bg-travel-50">
             <PublicWorldMap />
           </div>
           <div className="px-6 sm:px-8 py-5 bg-gray-50 border-t border-gray-200">
@@ -441,7 +441,7 @@ export default function Home() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.1, duration: 0.5 }}
               whileHover={{ y: -5 }}
-              className="flex-1 min-w-[200px] max-w-[240px]"
+              className="flex-1 min-w-50 max-w-60"
             >
               <div className="bg-white rounded-2xl border border-gray-200/70 shadow-sm hover:shadow-lg transition-all duration-200 h-full flex flex-col overflow-hidden">
                 {/* Header s názvem kontinentu a ikonou */}
@@ -450,7 +450,7 @@ export default function Home() {
                     <h3 className="text-lg font-bold text-travel-600 border border-travel-300 rounded-lg px-3 py-1.5 inline-block">
                       {continent.name}
                     </h3>
-                    <FiMap className="w-6 h-6 text-travel-600 flex-shrink-0" />
+                    <FiMap className="w-6 h-6 text-travel-600 shrink-0" />
                   </div>
                 </div>
 
@@ -507,7 +507,7 @@ export default function Home() {
                   key={i}
                   className="bg-white rounded-2xl border border-gray-200/70 shadow-sm overflow-hidden"
                 >
-                  <div className="h-48 bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse" />
+                  <div className="h-48 bg-linear-to-br from-gray-200 to-gray-300 animate-pulse" />
                   <div className="p-5 space-y-3">
                     <div className="h-4 w-24 bg-gray-200 animate-pulse rounded" />
                     <div className="h-6 w-3/4 bg-gray-200 animate-pulse rounded" />
@@ -719,7 +719,7 @@ export default function Home() {
           className="relative overflow-hidden bg-travel-600 rounded-2xl shadow-lg"
         >
           <div className="absolute inset-0 opacity-20">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.1)_1px,transparent_0)] [background-size:20px_20px]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.1)_1px,transparent_0)] bg-size-[20px_20px]" />
           </div>
           <div className="relative text-center px-8 py-16">
             <h2 className="text-4xl sm:text-5xl font-black text-white mb-6">
