@@ -831,14 +831,14 @@ export default function Navbar() {
 
             {/* User Section */}
             {mounted && displayUser && (
-              <div className="border-t border-blue-200 bg-white/30">
+              <div className="border-t border-blue-900 bg-blue-900 ">
                 <button
                   onClick={() => setMobileUserMenuOpen(!mobileUserMenuOpen)}
-                  className="w-full px-6 py-5 flex items-center gap-3 hover:bg-white/40 transition"
+                  className="w-full px-6 py-5 flex items-center gap-3 hover:bg-white/10 transition"
                 >
                   {displayUser.photoURL &&
                   displayUser.photoURL.trim() !== "" ? (
-                    <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-green-200 shrink-0 relative">
+                    <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-green-200 shrink-0 relative ">
                       <img
                         src={displayUser.photoURL}
                         alt={
@@ -871,27 +871,27 @@ export default function Navbar() {
                       {getInitial(displayUser)}
                     </div>
                   )}
-                  <div className="flex flex-col flex-1 min-w-0 text-left">
-                    <span className="text-base font-semibold text-blue-900 truncate">
+                  <div className="flex flex-col flex-1 min-w-0 text-left ">
+                    <span className="text-base font-semibold text-white truncate">
                       {displayUser.nickname ||
                         displayUser.displayName ||
                         displayUser.email?.split("@")[0] ||
                         "Uživatel"}
                     </span>
                     {displayUser.email && (
-                      <span className="text-sm text-blue-700 truncate">
+                      <span className="text-sm text-blue-200 truncate">
                         {displayUser.email}
                       </span>
                     )}
                   </div>
                   <FiChevronDown
-                    className={`w-5 h-5 text-blue-900 transition-transform shrink-0 ${
+                    className={`w-5 h-5 text-white transition-transform shrink-0 ${
                       mobileUserMenuOpen ? "rotate-180" : ""
                     }`}
                   />
                 </button>
                 {mobileUserMenuOpen && (
-                  <div className="px-6 pb-5 space-y-2 border-t border-blue-200 pt-3">
+                  <div className="px-6 pb-5 space-y-2 border-t border-blue-800 pt-3">
                     <button
                       onClick={() => {
                         setMobileMenuOpen(false);
@@ -901,7 +901,7 @@ export default function Navbar() {
                           `/profil/${currentUser?.nicknameSlug || currentUser?.uid}`,
                         );
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-white hover:bg-white/10 transition cursor-pointer"
                     >
                       <FiUser className="text-lg" />
                       <span>Můj profil</span>
@@ -913,7 +913,7 @@ export default function Navbar() {
                           setMobileUserMenuOpen(false);
                           router.push("/admin");
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-white hover:bg-white/10 transition cursor-pointer"
                       >
                         <FiLayout className="text-lg" />
                         <span>Dashboard</span>
@@ -925,7 +925,7 @@ export default function Navbar() {
                         setMobileUserMenuOpen(false);
                         router.push("/nastaveni");
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-white hover:bg-white/10 transition cursor-pointer"
                     >
                       <FiSettings className="text-lg" />
                       <span>Nastavení</span>
@@ -936,7 +936,7 @@ export default function Navbar() {
                         setMobileUserMenuOpen(false);
                         router.push("/napoveda");
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-blue-900 hover:bg-white/60 transition"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-white hover:bg-white/10 transition cursor-pointer"
                     >
                       <FiHelpCircle className="text-lg" />
                       <span>Nápověda</span>
@@ -956,7 +956,7 @@ export default function Navbar() {
                         }
                       }}
                       disabled={loggingOut}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-red-600 hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-red-300 hover:bg-red-500/10 disabled:opacity-60 disabled:cursor-not-allowed transition cursor-pointer"
                     >
                       <FiLogOut className="text-lg" />
                       <span>{loggingOut ? "Odhlašuji…" : "Odhlásit se"}</span>
@@ -967,7 +967,7 @@ export default function Navbar() {
             )}
 
             {mounted && !displayUser && (
-              <div className="border-t border-blue-200 px-6 pt-5 pb-12 bg-white/30">
+              <div className="border-t border-blue-900 px-6 pt-5 pb-12 bg-blue-900">
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
