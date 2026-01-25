@@ -27,7 +27,9 @@ import { supabase } from "@/lib/supabase/client";
 import { authUtils } from "@/utils/supabase";
 import { marble } from "@/lib/fonts";
 
-function getInitial(user: { nickname?: string; displayName?: string; email?: string } | null) {
+function getInitial(
+  user: { nickname?: string; displayName?: string; email?: string } | null,
+) {
   return (
     user?.nickname?.charAt(0)?.toUpperCase() ||
     user?.displayName?.charAt(0)?.toUpperCase() ||
@@ -53,7 +55,7 @@ export default function Navbar() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [authLoadingTimeout, setAuthLoadingTimeout] = useState(false);
   const { isAdmin } = useIsAdmin();
-  
+
   // Použít cached user jako fallback, pokud authLoading je true
   const [cachedUser, setCachedUser] = useState(() => {
     if (typeof window !== "undefined") {
@@ -61,7 +63,7 @@ export default function Navbar() {
     }
     return null;
   });
-  
+
   // Aktualizovat cached user když se změní user z useAuth
   useEffect(() => {
     if (user) {
@@ -104,51 +106,63 @@ export default function Navbar() {
       authUtils.clearCachedUser();
     }
   }, [loggingOut]);
-  
+
   // Použít user nebo cachedUser pro zobrazení
   // Ale pouze pokud není právě probíhající odhlášení
   const displayUser = (!loggingOut && (user || cachedUser)) || null;
-  
+
   // menuItems musí být useMemo, aby se přepočítaly když se změní isAdmin
-  const menuItems = useMemo(() => [
-    {
-      label: "Můj profil",
-      icon: FiUser,
-      onClick: () => {
-        setMenuOpen(false);
-        const currentUser = user || cachedUser;
-        router.push(`/profil/${currentUser?.nicknameSlug || currentUser?.uid}`);
+  const menuItems = useMemo(
+    () => [
+      {
+        label: "Můj profil",
+        icon: FiUser,
+        onClick: () => {
+          setMenuOpen(false);
+          const currentUser = user || cachedUser;
+          router.push(
+            `/profil/${currentUser?.nicknameSlug || currentUser?.uid}`,
+          );
+        },
       },
-    },
-    ...(isAdmin
-      ? [
-          {
-            label: "Dashboard",
-            icon: FiLayout,
-            onClick: () => {
-              setMenuOpen(false);
-              router.push("/admin");
+      ...(isAdmin
+        ? [
+            {
+              label: "Dashboard",
+              icon: FiLayout,
+              onClick: () => {
+                setMenuOpen(false);
+                router.push("/admin");
+              },
             },
-          },
-        ]
-      : []),
-    {
-      label: "Nastavení",
-      icon: FiSettings,
-      onClick: () => {
-        setMenuOpen(false);
-        router.push("/nastaveni");
+          ]
+        : []),
+      {
+        label: "Nastavení",
+        icon: FiSettings,
+        onClick: () => {
+          setMenuOpen(false);
+          router.push("/nastaveni");
+        },
       },
-    },
-    {
-      label: "Nápověda",
-      icon: FiHelpCircle,
-      onClick: () => {
-        setMenuOpen(false);
-        router.push("/napoveda");
+      {
+        label: "Nápověda",
+        icon: FiHelpCircle,
+        onClick: () => {
+          setMenuOpen(false);
+          router.push("/napoveda");
+        },
       },
-    },
-  ], [isAdmin, user?.nicknameSlug, user?.uid, cachedUser?.nicknameSlug, cachedUser?.uid, router]);
+    ],
+    [
+      isAdmin,
+      user?.nicknameSlug,
+      user?.uid,
+      cachedUser?.nicknameSlug,
+      cachedUser?.uid,
+      router,
+    ],
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -178,7 +192,9 @@ export default function Navbar() {
             const { data } = await supabase.auth.getSession();
             if (data.session && !user && !cachedUser) {
               // Session existuje, ale user se nenačetl - zkusíme refresh
-              console.log("[Navbar] Session existuje, ale user chybí, zkouším refreshUser...");
+              console.log(
+                "[Navbar] Session existuje, ale user chybí, zkouším refreshUser...",
+              );
               if (refreshUser) {
                 try {
                   await refreshUser();
@@ -187,7 +203,9 @@ export default function Navbar() {
                   // Pokud refresh selže, zkusit reload jako poslední možnost
                   const retryTimeout = setTimeout(() => {
                     if (!user) {
-                      console.warn("[Navbar] Refresh selhal, reloaduji stránku...");
+                      console.warn(
+                        "[Navbar] Refresh selhal, reloaduji stránku...",
+                      );
                       window.location.reload();
                     }
                   }, 2000);
@@ -359,7 +377,10 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-20">
             {/* Left: Logo */}
             <div className="flex items-center space-x-3">
-              <Link href="/" className={`${marble.variable} flex items-center space-x-2`}>
+              <Link
+                href="/"
+                className={`${marble.variable} flex items-center space-x-2`}
+              >
                 <Image
                   src="/logo.svg"
                   alt="Destinote"
@@ -410,10 +431,7 @@ export default function Navbar() {
                     onMouseLeave={() => setCountriesOpen(false)}
                   >
                     {countriesData.map((col) => (
-                      <div
-                        key={col.title}
-                        className="flex-shrink-0 min-w-[150px]"
-                      >
+                      <div key={col.title} className="shrink-0 min-w-37.5">
                         <div className="font-semibold text-gray-900 mb-2.5 text-base">
                           {col.title}
                         </div>
@@ -509,11 +527,16 @@ export default function Navbar() {
                       onClick={() => setMenuOpen((v) => !v)}
                       className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 cursor-pointer"
                     >
-                      {displayUser.photoURL && displayUser.photoURL.trim() !== "" ? (
+                      {displayUser.photoURL &&
+                      displayUser.photoURL.trim() !== "" ? (
                         <div className="w-9 h-9 rounded-full overflow-hidden ring-1 ring-green-200 relative">
                           <img
                             src={displayUser.photoURL}
-                            alt={displayUser.nickname || displayUser.displayName || "Avatar"}
+                            alt={
+                              displayUser.nickname ||
+                              displayUser.displayName ||
+                              "Avatar"
+                            }
                             className="w-full h-full object-cover"
                             loading="eager"
                             onError={(e) => {
@@ -521,9 +544,13 @@ export default function Navbar() {
                               const target = e.currentTarget;
                               target.style.display = "none";
                               const parent = target.parentElement;
-                              if (parent && !parent.querySelector(".fallback-initial")) {
+                              if (
+                                parent &&
+                                !parent.querySelector(".fallback-initial")
+                              ) {
                                 const fallback = document.createElement("div");
-                                fallback.className = "w-9 h-9 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-1 ring-green-200 absolute inset-0 fallback-initial";
+                                fallback.className =
+                                  "w-9 h-9 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-1 ring-green-200 absolute inset-0 fallback-initial";
                                 fallback.textContent = getInitial(user);
                                 parent.appendChild(fallback);
                               }
@@ -545,11 +572,16 @@ export default function Navbar() {
                     {menuOpen && (
                       <div className="absolute right-0 top-14 w-80 bg-white shadow-2xl rounded-2xl border border-slate-200 p-4 z-50">
                         <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-                          {displayUser.photoURL && displayUser.photoURL.trim() !== "" ? (
+                          {displayUser.photoURL &&
+                          displayUser.photoURL.trim() !== "" ? (
                             <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-green-200 relative">
                               <img
                                 src={displayUser.photoURL}
-                                alt={displayUser.nickname || displayUser.displayName || "Avatar"}
+                                alt={
+                                  displayUser.nickname ||
+                                  displayUser.displayName ||
+                                  "Avatar"
+                                }
                                 className="w-full h-full object-cover"
                                 loading="eager"
                                 onError={(e) => {
@@ -557,10 +589,16 @@ export default function Navbar() {
                                   const target = e.currentTarget;
                                   target.style.display = "none";
                                   const parent = target.parentElement;
-                                  if (parent && !parent.querySelector(".fallback-initial")) {
-                                    const fallback = document.createElement("div");
-                                    fallback.className = "w-12 h-12 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200 absolute inset-0 fallback-initial";
-                                    fallback.textContent = getInitial(displayUser);
+                                  if (
+                                    parent &&
+                                    !parent.querySelector(".fallback-initial")
+                                  ) {
+                                    const fallback =
+                                      document.createElement("div");
+                                    fallback.className =
+                                      "w-12 h-12 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200 absolute inset-0 fallback-initial";
+                                    fallback.textContent =
+                                      getInitial(displayUser);
                                     parent.appendChild(fallback);
                                   }
                                 }}
@@ -573,7 +611,10 @@ export default function Navbar() {
                           )}
                           <div className="flex flex-col">
                             <span className="text-base font-semibold text-slate-900">
-                              {displayUser.nickname || displayUser.displayName || displayUser.email?.split("@")[0] || "Uživatel"}
+                              {displayUser.nickname ||
+                                displayUser.displayName ||
+                                displayUser.email?.split("@")[0] ||
+                                "Uživatel"}
                             </span>
                             {displayUser.email && (
                               <span className="text-sm text-slate-500">
@@ -795,11 +836,16 @@ export default function Navbar() {
                   onClick={() => setMobileUserMenuOpen(!mobileUserMenuOpen)}
                   className="w-full px-6 py-5 flex items-center gap-3 hover:bg-white/40 transition"
                 >
-                  {displayUser.photoURL && displayUser.photoURL.trim() !== "" ? (
-                    <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-green-200 flex-shrink-0 relative">
+                  {displayUser.photoURL &&
+                  displayUser.photoURL.trim() !== "" ? (
+                    <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-green-200 shrink-0 relative">
                       <img
                         src={displayUser.photoURL}
-                        alt={displayUser.nickname || displayUser.displayName || "Avatar"}
+                        alt={
+                          displayUser.nickname ||
+                          displayUser.displayName ||
+                          "Avatar"
+                        }
                         className="w-full h-full object-cover"
                         loading="eager"
                         onError={(e) => {
@@ -807,9 +853,13 @@ export default function Navbar() {
                           const target = e.currentTarget;
                           target.style.display = "none";
                           const parent = target.parentElement;
-                          if (parent && !parent.querySelector(".fallback-initial")) {
+                          if (
+                            parent &&
+                            !parent.querySelector(".fallback-initial")
+                          ) {
                             const fallback = document.createElement("div");
-                            fallback.className = "w-12 h-12 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200 flex-shrink-0 absolute inset-0 fallback-initial";
+                            fallback.className =
+                              "w-12 h-12 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200 flex-shrink-0 absolute inset-0 fallback-initial";
                             fallback.textContent = getInitial(user);
                             parent.appendChild(fallback);
                           }
@@ -817,13 +867,16 @@ export default function Navbar() {
                       />
                     </div>
                   ) : (
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200 flex-shrink-0">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-green-100 text-green-700 flex items-center justify-center font-semibold ring-2 ring-green-200 shrink-0">
                       {getInitial(displayUser)}
                     </div>
                   )}
                   <div className="flex flex-col flex-1 min-w-0 text-left">
                     <span className="text-base font-semibold text-blue-900 truncate">
-                      {displayUser.nickname || displayUser.displayName || displayUser.email?.split("@")[0] || "Uživatel"}
+                      {displayUser.nickname ||
+                        displayUser.displayName ||
+                        displayUser.email?.split("@")[0] ||
+                        "Uživatel"}
                     </span>
                     {displayUser.email && (
                       <span className="text-sm text-blue-700 truncate">
@@ -832,7 +885,7 @@ export default function Navbar() {
                     )}
                   </div>
                   <FiChevronDown
-                    className={`w-5 h-5 text-blue-900 transition-transform flex-shrink-0 ${
+                    className={`w-5 h-5 text-blue-900 transition-transform shrink-0 ${
                       mobileUserMenuOpen ? "rotate-180" : ""
                     }`}
                   />
@@ -932,4 +985,3 @@ export default function Navbar() {
     </>
   );
 }
-

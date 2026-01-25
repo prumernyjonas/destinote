@@ -23,6 +23,7 @@ import {
 } from "react-icons/fi";
 import PublicWorldMap from "@/components/PublicWorldMap";
 import FlightsWidget from "@/components/flights/FlightsWidget";
+import Globe from "@/components/Globe";
 import {
   Card,
   CardContent,
@@ -197,165 +198,94 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-travel-50/50 blur-3xl" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16">
-          <div className="grid lg:grid-cols-2 gap-8 items-center">
-            {/* Left side - Text content */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="space-y-6 text-center lg:text-left order-2 lg:order-1"
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.4 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-travel-200 shadow-lg"
-              >
-                <span className="text-lg">🌍</span>
-                <span className="text-sm font-semibold text-gray-700">
-                  Osobní cestovatelská mapa & komunita
-                </span>
-              </motion.div>
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.6 }}
-                className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight"
-              >
-                <span>
-                  <GradientText
-                    colors={["#006daa", "#0353a4", "#053772"]}
-                    animationSpeed={7}
-                  >
-                    Objevuj místa. Ukládej zážitky
-                  </GradientText>
-                </span>
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.6 }}
-                className="text-lg sm:text-xl text-gray-600 max-w-xl leading-relaxed"
-              >
-                Vytvoř si osobní mapu světa, ukládej navštívené země a sdílej
-                své cesty.
-              </motion.p>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.6 }}
-                className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center"
-              >
-                <Link href="/zeme">
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button className="bg-travel-600 hover:bg-travel-700 active:bg-travel-700 focus:ring-0 focus:outline-none text-white px-8 py-4 text-lg font-semibold shadow-lg hover:shadow-xl transition-all cursor-pointer">
-                      Prozkoumat mapu
-                    </Button>
-                  </motion.div>
-                </Link>
-                <Link href="/registrace">
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button className="px-8 py-4 text-lg font-semibold border-2 border-blue-900 bg-white hover:bg-blue-50 active:bg-blue-50 focus:ring-0 focus:outline-none text-blue-900 hover:text-blue-900 active:text-blue-900 shadow-md hover:shadow-lg transition-all cursor-pointer">
-                      Začít zdarma
-                    </Button>
-                  </motion.div>
-                </Link>
-              </motion.div>
-              {/* Trust row */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
-                  <FiCreditCard className="w-4 h-4 text-travel-600" />
-                  <span>Bez platební karty</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <FiClock className="w-4 h-4 text-travel-600" />
-                  <span>Rychlá registrace</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <FiUser className="w-4 h-4 text-travel-600" />
-                  <span>Vytvoř si profil</span>
-                </div>
-              </div>
-              {/* Stats grid - inline with hero */}
-              <div className="grid grid-cols-2 gap-3 pt-4">
-                {[
-                  {
-                    label: "Cestovatelé",
-                    value: "3,5k+",
-                    icon: FiUsers,
-                    href: "/zebricek",
-                  },
-                  {
-                    label: "Články",
-                    value: `${Math.max(articles.length, 12)}+`,
-                    icon: FiBookOpen,
-                    href: "/komunita",
-                  },
-                  {
-                    label: "Země",
-                    value: "195",
-                    icon: FiGlobe,
-                    href: "/zeme",
-                  },
-                  {
-                    label: "Nejvyšší skóre cestovatele",
-                    value: "4,4k",
-                    icon: FiTrendingUp,
-                    href: "/zebricek",
-                  },
-                ].map((item) => (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className="bg-white rounded-2xl p-3 border border-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-travel-500 flex items-center justify-center text-white text-sm">
-                        <item.icon />
-                      </div>
-                      <div>
-                        <div className="text-lg font-bold text-gray-900">
-                          {item.value}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {item.label}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </motion.div>
+      {/* Globe Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+        {/* Světelné efekty na pozadí */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl" />
+        </div>
 
-            {/* Right side - Globe image */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_70%,rgba(0,150,255,0.15)_0%,transparent_50%)]" />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 lg:pt-24 pb-0">
+          {/* Text Content nahoře */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="relative z-20 text-center mb-12 sm:mb-16"
+          >
+            <motion.h1
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.6, duration: 0.8, type: "spring" }}
-              className="relative order-1 lg:order-2 flex justify-center lg:justify-end"
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="text-5xl sm:text-6xl lg:text-7xl font-black tracking-tight mb-4 text-white"
             >
-              <div className="relative w-64 h-64 sm:w-80 sm:h-80 lg:w-[420px] lg:h-[420px] animate-float globe-hover">
-                <img
-                  src="/globe.png"
-                  alt="3D Globe with location pin"
-                  className="w-full h-full object-contain drop-shadow-2xl"
-                  style={{ imageRendering: "crisp-edges" }}
-                />
-                {/* Glow effect */}
-                <div className="absolute inset-0 bg-travel-400/20 blur-3xl -z-10 rounded-full scale-75" />
-              </div>
+              <GradientText
+                colors={["#ffffff", "#e0f2fe", "#bae6fd"]}
+                animationSpeed={7}
+              >
+                Destinote
+              </GradientText>
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+              className="text-xl sm:text-2xl lg:text-3xl text-white/90 font-semibold max-w-3xl mx-auto mb-4"
+            >
+              Objevuj místa. Ukládej zážitky.
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.6 }}
+              className="text-base sm:text-lg text-white/70 max-w-2xl mx-auto mb-8"
+            >
+              Vytvoř si osobní mapu světa, ukládej navštívené země a sdílej své
+              cesty s komunitou cestovatelů.
+            </motion.p>
+
+            {/* CTA Tlačítka */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.6 }}
+              className="relative z-20 flex flex-col sm:flex-row gap-4 justify-center items-center"
+            >
+              <Link href="/zeme">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button className="bg-white text-slate-900 hover:bg-gray-100 px-8 py-4 text-lg font-bold shadow-xl cursor-pointer">
+                    Začít zdarma
+                  </Button>
+                </motion.div>
+              </Link>
+              <Link href="/registrace">
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button className="border-2 border-white bg-transparent text-white hover:bg-white/10 hover:text-white px-8 py-4 text-lg font-bold cursor-pointer">
+                    Prozkoumat mapu
+                  </Button>
+                </motion.div>
+              </Link>
             </motion.div>
-          </div>
+          </motion.div>
+
+          {/* Globe dole - polokoule */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7, duration: 1 }}
+            className="relative z-0 -mt-16 sm:-mt-28 lg:-mt-32 xl:-mt-24 -mb-8"
+          >
+            <Globe />
+          </motion.div>
         </div>
       </section>
 
@@ -531,7 +461,7 @@ export default function Home() {
                       <li key={country.name}>
                         <Link
                           href={`/zeme/${country.continentSlug}/${countrySlug(
-                            country.name
+                            country.name,
                           )}`}
                           className="block text-gray-700 hover:text-travel-600 transition-colors cursor-pointer"
                         >
@@ -630,10 +560,10 @@ export default function Home() {
                       <div className="text-xs text-gray-500 mb-2">
                         {article.published_at
                           ? new Date(article.published_at).toLocaleDateString(
-                              "cs-CZ"
+                              "cs-CZ",
                             )
                           : new Date(article.created_at).toLocaleDateString(
-                              "cs-CZ"
+                              "cs-CZ",
                             )}
                       </div>
                       <h3 className="text-lg font-bold text-gray-900 line-clamp-2 group-hover:text-travel-600 transition-colors">

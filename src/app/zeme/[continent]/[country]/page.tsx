@@ -55,8 +55,10 @@ function continentFromDbToLabel(continent: string | null | undefined): string {
   if (c === "africa" || c === "afrika") return "Afrika";
   if (c === "europe" || c === "evropa") return "Evropa";
   if (c === "asia" || c === "asie") return "Asie";
-  if (c === "australia" || c === "oceania" || c === "australie") return "Austrálie & Oceánie";
-  if (c === "north america" || c === "severni-amerika") return "Severní Amerika";
+  if (c === "australia" || c === "oceania" || c === "australie")
+    return "Austrálie & Oceánie";
+  if (c === "north america" || c === "severni-amerika")
+    return "Severní Amerika";
   if (c === "south america" || c === "jizni-amerika") return "Jižní Amerika";
   if (c === "antarctica" || c === "antarktida") return "Antarktida";
   return continent;
@@ -123,7 +125,7 @@ export default async function CountryDetailPage({
   const displayName =
     resolvedName ||
     country.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase()); // fallback kapitalizace
-  
+
   // Zkusit získat kontinent z databáze podle ISO2, pokud to selže, použít URL parametr
   const dbContinent = await getContinentFromDatabase(resolvedIso2);
   const continentLabel = dbContinent
@@ -134,7 +136,10 @@ export default async function CountryDetailPage({
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Breadcrumb navigace */}
       <nav className="text-sm text-gray-600 mb-6">
-        <Link href="/zeme" className="hover:text-green-600 font-medium transition-colors">
+        <Link
+          href="/zeme"
+          className="hover:text-green-600 font-medium transition-colors"
+        >
           Země
         </Link>
         <span className="mx-2">/</span>

@@ -13,33 +13,33 @@ type Props = {
 
 // Mapování českých názvů kontinentů na anglické (jak jsou v databázi)
 const continentMapping: Record<string, string> = {
-  "Asie": "Asia",
-  "Evropa": "Europe",
-  "Afrika": "Africa",
+  Asie: "Asia",
+  Evropa: "Europe",
+  Afrika: "Africa",
   "Austrálie & Oceánie": "Oceania",
   "Severní Amerika": "North America",
   "Jižní Amerika": "South America",
-  "Antarktida": "Antarctica",
+  Antarktida: "Antarctica",
 };
 
 async function fetchRegionArticles(regionName: string, limit: number = 6) {
   try {
     const admin = createAdminSupabaseClient();
-    
+
     // Převést český název kontinentu na anglický (jak je v databázi)
     const continentDbName = continentMapping[regionName] || regionName;
-    
+
     // Nejdřív získat všechny země z daného kontinentu
     // Zkusit jak anglický název (primární), tak český (fallback)
     let countriesData: any[] = [];
     let countriesError: any = null;
-    
+
     // Zkusit nejdřív anglický název
     const { data: data1, error: error1 } = await admin
       .from("countries")
       .select("name, name_cs")
       .eq("continent", continentDbName);
-    
+
     if (!error1 && data1 && data1.length > 0) {
       countriesData = data1;
     } else {
@@ -48,18 +48,18 @@ async function fetchRegionArticles(regionName: string, limit: number = 6) {
         .from("countries")
         .select("name, name_cs")
         .eq("continent", regionName);
-      
+
       if (!error2 && data2) {
         countriesData = data2;
       } else {
         countriesError = error2 || error1;
       }
     }
-    
+
     if (countriesError || !countriesData || countriesData.length === 0) {
       return [];
     }
-    
+
     // Vytvořit seznam názvů zemí (české i anglické)
     const countryNames = countriesData.flatMap((c: any) => {
       const names = [];
@@ -67,38 +67,38 @@ async function fetchRegionArticles(regionName: string, limit: number = 6) {
       if (c.name) names.push(c.name);
       return names;
     });
-    
+
     // Načíst všechny schválené články
     const { data: articlesData, error: articlesError } = await admin
       .from("articles")
       .select(
-        "id, title, status, created_at, updated_at, published_at, main_image_url, main_image_alt, slug, destination"
+        "id, title, status, created_at, updated_at, published_at, main_image_url, main_image_alt, slug, destination",
       )
       .eq("status", "approved")
       .is("deleted_at", null)
       .order("published_at", { ascending: false })
       .limit(limit * 2); // Načíst více, protože budeme filtrovat
-    
+
     if (articlesError || !articlesData) {
       return [];
     }
-    
+
     // Filtrovat články podle destinace (musí být v seznamu zemí kontinentu)
     const filtered = articlesData.filter((article: any) => {
       if (!article.destination) return false;
       return countryNames.some(
         (countryName: string) =>
-          article.destination?.toLowerCase() === countryName.toLowerCase()
+          article.destination?.toLowerCase() === countryName.toLowerCase(),
       );
     });
-    
+
     // Omezit na limit a seřadit podle data publikace
     filtered.sort((a: any, b: any) => {
       const dateA = new Date(a.published_at || a.created_at).getTime();
       const dateB = new Date(b.published_at || b.created_at).getTime();
       return dateB - dateA;
     });
-    
+
     return filtered.slice(0, limit).map((article: any) => ({
       id: article.id,
       title: article.title,
@@ -121,7 +121,7 @@ export default async function ArticlesTeaser({
   regionName,
 }: Props) {
   const articles = regionName ? await fetchRegionArticles(regionName, 6) : [];
-  
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -182,16 +182,22 @@ export default async function ArticlesTeaser({
                   {/* Malé datum hned pod názvem */}
                   <div className="text-[11px] text-gray-400 font-normal">
                     {article.published_at
-                      ? new Date(article.published_at).toLocaleDateString("cs-CZ", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })
-                      : new Date(article.created_at).toLocaleDateString("cs-CZ", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
+                      ? new Date(article.published_at).toLocaleDateString(
+                          "cs-CZ",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          },
+                        )
+                      : new Date(article.created_at).toLocaleDateString(
+                          "cs-CZ",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          },
+                        )}
                   </div>
                 </div>
               </div>

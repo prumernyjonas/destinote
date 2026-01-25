@@ -90,14 +90,17 @@ export default function UserDetailPanel({
         role="dialog"
         aria-modal="true"
         aria-labelledby="panel-title"
-        className={`fixed right-0 top-0 h-full w-full sm:w-[520px] bg-white shadow-xl z-50 transform transition-transform duration-200 ease-out ${
+        className={`fixed right-0 top-0 h-full w-full sm:w-130 bg-white shadow-xl z-50 transform transition-transform duration-200 ease-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="h-full flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-slate-200">
-            <h2 id="panel-title" className="text-lg font-semibold text-slate-900">
+            <h2
+              id="panel-title"
+              className="text-lg font-semibold text-slate-900"
+            >
               Detail uživatele
             </h2>
             <button
@@ -164,8 +167,8 @@ export default function UserDetailPanel({
                         user.role === "admin"
                           ? "bg-purple-100 text-purple-700"
                           : user.role === "moderator"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-100 text-gray-700"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-gray-100 text-gray-700"
                       }`}
                     >
                       {user.role}

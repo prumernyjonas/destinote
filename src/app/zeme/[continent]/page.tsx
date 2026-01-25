@@ -26,24 +26,30 @@ function continentLabelFromSlug(slug: string): string {
 
 // Mapování českých názvů kontinentů na anglické (jak jsou v databázi)
 const continentMapping: Record<string, string> = {
-  "Asie": "Asia",
-  "Evropa": "Europe",
-  "Afrika": "Africa",
+  Asie: "Asia",
+  Evropa: "Europe",
+  Afrika: "Africa",
   "Austrálie & Oceánie": "Oceania",
   "Severní Amerika": "North America",
   "Jižní Amerika": "South America",
-  "Antarktida": "Antarctica",
+  Antarktida: "Antarctica",
 };
 
 // Popisné texty pro kontinenty
 const continentDescriptions: Record<string, string> = {
-  "Asie": "Asie je největší a nejlidnatější kontinent na světě, domov fascinujících kultur, starobylých civilizací a rozmanitých krajin. Od himálajských vrcholů přes tropické pláže až po moderní megapole - Asie nabízí nekonečné možnosti objevování.",
-  "Evropa": "Evropa je kontinentem bohaté historie, rozmanité kultury a nádherné architektury. Od severských fjordů přes středomořské pláže až po alpské vrcholky - Evropa láká milovníky historie, umění i přírody.",
-  "Afrika": "Afrika je kontinentem divoké přírody, pestrých kultur a úchvatných krajin. Od saharských dun přes savany plné zvířat až po tropické pralesy - Afrika nabízí nezapomenutelné zážitky a dobrodružství.",
-  "Austrálie & Oceánie": "Austrálie a Oceánie jsou domovem jedinečné přírody, nádherných pláží a fascinujících kultur. Od australského outbacku přes novozélandské hory až po tropické ostrovy Tichého oceánu - tento region nabízí nezapomenutelné zážitky.",
-  "Severní Amerika": "Severní Amerika je kontinentem rozmanitých krajin, od arktických tunder přes rozsáhlé prérie až po tropické pláže. Domov moderních metropolí, národních parků a bohaté kulturní historie.",
-  "Jižní Amerika": "Jižní Amerika je kontinentem amazonských pralesů, andských vrcholů a nádherných pláží. Od inckých ruin přes tango v Buenos Aires až po karneval v Riu - Jižní Amerika pulzuje životem a barvami.",
-  "Antarktida": "Antarktida je nejchladnější, nejsušší a největrnější kontinent na Zemi. Domov tučňáků, tuleňů a úchvatných ledových krajin. Jedinečná destinace pro ty, kteří hledají skutečné dobrodružství.",
+  Asie: "Asie je největší a nejlidnatější kontinent na světě, domov fascinujících kultur, starobylých civilizací a rozmanitých krajin. Od himálajských vrcholů přes tropické pláže až po moderní megapole - Asie nabízí nekonečné možnosti objevování.",
+  Evropa:
+    "Evropa je kontinentem bohaté historie, rozmanité kultury a nádherné architektury. Od severských fjordů přes středomořské pláže až po alpské vrcholky - Evropa láká milovníky historie, umění i přírody.",
+  Afrika:
+    "Afrika je kontinentem divoké přírody, pestrých kultur a úchvatných krajin. Od saharských dun přes savany plné zvířat až po tropické pralesy - Afrika nabízí nezapomenutelné zážitky a dobrodružství.",
+  "Austrálie & Oceánie":
+    "Austrálie a Oceánie jsou domovem jedinečné přírody, nádherných pláží a fascinujících kultur. Od australského outbacku přes novozélandské hory až po tropické ostrovy Tichého oceánu - tento region nabízí nezapomenutelné zážitky.",
+  "Severní Amerika":
+    "Severní Amerika je kontinentem rozmanitých krajin, od arktických tunder přes rozsáhlé prérie až po tropické pláže. Domov moderních metropolí, národních parků a bohaté kulturní historie.",
+  "Jižní Amerika":
+    "Jižní Amerika je kontinentem amazonských pralesů, andských vrcholů a nádherných pláží. Od inckých ruin přes tango v Buenos Aires až po karneval v Riu - Jižní Amerika pulzuje životem a barvami.",
+  Antarktida:
+    "Antarktida je nejchladnější, nejsušší a největrnější kontinent na Zemi. Domov tučňáků, tuleňů a úchvatných ledových krajin. Jedinečná destinace pro ty, kteří hledají skutečné dobrodružství.",
 };
 
 // Funkce pro slugifikaci názvu země
@@ -59,20 +65,20 @@ function slugify(input: string): string {
 async function fetchContinentCountries(regionName: string) {
   try {
     const admin = createAdminSupabaseClient();
-    
+
     // Převést český název kontinentu na anglický (jak je v databázi)
     const continentDbName = continentMapping[regionName] || regionName;
-    
+
     // Načíst všechny země z kontinentu
     let countriesData: any[] = [];
-    
+
     // Zkusit nejdřív anglický název
     const { data: data1, error: error1 } = await admin
       .from("countries")
       .select("id, name, name_cs, iso_code, slug")
       .eq("continent", continentDbName)
-      .order("name_cs", { ascending: true, nullsLast: true });
-    
+      .order("name_cs", { ascending: true });
+
     if (!error1 && data1 && data1.length > 0) {
       countriesData = data1;
     } else {
@@ -81,13 +87,13 @@ async function fetchContinentCountries(regionName: string) {
         .from("countries")
         .select("id, name, name_cs, iso_code, slug")
         .eq("continent", regionName)
-        .order("name_cs", { ascending: true, nullsLast: true });
-      
+        .order("name_cs", { ascending: true });
+
       if (!error2 && data2) {
         countriesData = data2;
       }
     }
-    
+
     // Mapovat země s českými názvy
     const mappedCountries = countriesData.map((c: any) => {
       let countryName = c.name_cs;
@@ -97,7 +103,7 @@ async function fetchContinentCountries(regionName: string) {
       if (!countryName) {
         countryName = c.name;
       }
-      
+
       return {
         id: c.id,
         name: countryName,
@@ -105,7 +111,7 @@ async function fetchContinentCountries(regionName: string) {
         slug: c.slug || slugify(countryName),
       };
     });
-    
+
     return mappedCountries;
   } catch (error) {
     console.error("Error fetching continent countries:", error);
@@ -149,9 +155,11 @@ export default async function ContinentPage({
 }) {
   const { continent } = await params;
   const continentLabel = continentLabelFromSlug(continent);
-  const description = continentDescriptions[continentLabel] || `${continentLabel} je fascinující kontinent s rozmanitou kulturou, přírodou a historií. Objevte nejkrásnější destinace a inspirujte se pro vaši další cestu.`;
+  const description =
+    continentDescriptions[continentLabel] ||
+    `${continentLabel} je fascinující kontinent s rozmanitou kulturou, přírodou a historií. Objevte nejkrásnější destinace a inspirujte se pro vaši další cestu.`;
   const countries = await fetchContinentCountries(continentLabel);
-  
+
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <nav className="text-sm text-gray-600 mb-4">
@@ -165,20 +173,26 @@ export default async function ContinentPage({
       <p className="text-gray-600 mt-2 text-lg leading-relaxed max-w-4xl">
         {description}
       </p>
-      
+
       {/* Seznam některých zemí */}
       {countries.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Země v regionu</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">
+            Země v regionu
+          </h2>
           <CountriesCarousel countries={countries} continent={continent} />
         </div>
       )}
-      
+
       <div className="mt-8">
         <RegionGuide regionName={continentLabel} />
       </div>
       <div className="mt-8">
-        <ArticlesTeaser title="Tipy a články z regionu" href="/komunita" regionName={continentLabel} />
+        <ArticlesTeaser
+          title="Tipy a články z regionu"
+          href="/komunita"
+          regionName={continentLabel}
+        />
       </div>
     </main>
   );

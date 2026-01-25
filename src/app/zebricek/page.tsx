@@ -40,7 +40,7 @@ function timeFromNow(iso: string) {
 
 function Podium({ top3 }: { top3: LeaderboardEntry[] }) {
   const [first, second, third] = top3;
-  
+
   // Pokud není dostatek dat, nezobrazovat podium
   if (!first) {
     return null;
@@ -273,13 +273,15 @@ export default function LeaderboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Žebříček</h1>
-          <p className="text-gray-600 mt-2">Top cestovatelé podle počtu navštívených zemí</p>
+          <p className="text-gray-600 mt-2">
+            Top cestovatelé podle počtu navštívených zemí
+          </p>
         </div>
-        <div className="hidden sm:flex items-center gap-2">
+        {/* <div className="hidden sm:flex items-center gap-2">
           <Button variant="outline" size="sm">
             Pouze přátelé
           </Button>
-        </div>
+        </div> */}
       </div>
 
       <ErrorMessage error={error} className="mt-4" />
@@ -292,9 +294,9 @@ export default function LeaderboardPage() {
         ) : null}
       </section>
 
-      <section className="mt-6">
+      {/* <section className="mt-6">
         {loading ? <TableSkeleton /> : <LeaderboardTable items={rest} />}
-      </section>
+      </section> */}
 
       {loading && (
         <div className="mt-8 flex justify-center">

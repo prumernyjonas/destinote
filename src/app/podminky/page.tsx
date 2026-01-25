@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default function PodminkyPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#cbe1f7] to-white">
+    <div className="min-h-screen bg-linear-to-b from-[#cbe1f7] to-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="bg-white/95 backdrop-blur rounded-2xl shadow-xl p-8 md:p-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
@@ -46,8 +46,8 @@ export default function PodminkyPage() {
                   Služby
                 </li>
                 <li>
-                  <strong>Obsah</strong> - veškeré texty, obrázky, videa a
-                  další materiály zveřejněné v rámci Služby
+                  <strong>Obsah</strong> - veškeré texty, obrázky, videa a další
+                  materiály zveřejněné v rámci Služby
                 </li>
                 <li>
                   <strong>Uživatelský obsah</strong> - obsah vytvořený a
@@ -65,16 +65,12 @@ export default function PodminkyPage() {
                 uživatelského účtu. Při registraci se zavazujete:
               </p>
               <ul className="list-disc pl-6 space-y-2">
-                <li>
-                  poskytnout pravdivé, přesné a aktuální informace o sobě
-                </li>
+                <li>poskytnout pravdivé, přesné a aktuální informace o sobě</li>
                 <li>
                   udržovat a aktualizovat registrační údaje tak, aby zůstaly
                   pravdivé, přesné a aktuální
                 </li>
-                <li>
-                  zachovávat důvěrnost svého hesla a přihlašovacích údajů
-                </li>
+                <li>zachovávat důvěrnost svého hesla a přihlašovacích údajů</li>
                 <li>
                   nést plnou odpovědnost za všechny aktivity, které se uskuteční
                   pod vaším účtem
@@ -97,16 +93,15 @@ export default function PodminkyPage() {
                   porušuje práva třetích stran
                 </li>
                 <li>
-                  nezveřejňovat obsah, který je nezákonný, urážlivý, diskriminační,
-                  pomlouvačný, vulgární, obscénní nebo jinak nevhodný
+                  nezveřejňovat obsah, který je nezákonný, urážlivý,
+                  diskriminační, pomlouvačný, vulgární, obscénní nebo jinak
+                  nevhodný
                 </li>
                 <li>
                   neporušovat autorská práva, ochranné známky nebo jiná práva
                   duševního vlastnictví
                 </li>
-                <li>
-                  nešířit malware, viry nebo jiný škodlivý software
-                </li>
+                <li>nešířit malware, viry nebo jiný škodlivý software</li>
                 <li>
                   neprovádět pokusy o neoprávněný přístup k systému nebo datům
                 </li>
@@ -114,9 +109,7 @@ export default function PodminkyPage() {
                   neprovádět automatizované sbírání dat (scraping) bez
                   předchozího písemného souhlasu Provozovatele
                 </li>
-                <li>
-                  respektovat práva a důstojnost ostatních uživatelů
-                </li>
+                <li>respektovat práva a důstojnost ostatních uživatelů</li>
               </ul>
             </section>
 
@@ -127,9 +120,9 @@ export default function PodminkyPage() {
               <p>
                 Uživatel si zachovává všechna práva k obsahu, který vytvoří a
                 zveřejní v rámci Služby. Zveřejněním obsahu však udělujete
-                Provozovateli a ostatním uživatelům Služby nevýhradní, celosvětovou,
-                bezplatnou licenci k použití, zobrazení, distribuci a
-                zveřejnění tohoto obsahu v rámci Služby.
+                Provozovateli a ostatním uživatelům Služby nevýhradní,
+                celosvětovou, bezplatnou licenci k použití, zobrazení,
+                distribuci a zveřejnění tohoto obsahu v rámci Služby.
               </p>
               <p>
                 Provozovatel si vyhrazuje právo odstranit nebo upravit jakýkoli
@@ -146,7 +139,8 @@ export default function PodminkyPage() {
                 Veškerý obsah Služby, včetně textů, grafiky, log, ikon, obrázků,
                 audio a video nahrávek, softwaru a jejich uspořádání, je
                 vlastnictvím Provozovatele nebo jeho poskytovatelů obsahu a je
-                chráněn autorským právem a dalšími zákony o duševním vlastnictví.
+                chráněn autorským právem a dalšími zákony o duševním
+                vlastnictví.
               </p>
               <p>
                 Uživatel nesmí kopírovat, reprodukovat, distribuovat, vytvářet
@@ -169,12 +163,8 @@ export default function PodminkyPage() {
                   Služba bude fungovat nepřetržitě, bez chyb nebo bezpečnostních
                   problémů
                 </li>
-                <li>
-                  jakékoli chyby budou opraveny
-                </li>
-                <li>
-                  Služba bude bez virů nebo jiných škodlivých komponent
-                </li>
+                <li>jakékoli chyby budou opraveny</li>
+                <li>Služba bude bez virů nebo jiných škodlivých komponent</li>
               </ul>
               <p>
                 Provozovatel nenese odpovědnost za jakékoli přímé, nepřímé,
@@ -203,10 +193,10 @@ export default function PodminkyPage() {
                 9. Změny Podmínek
               </h2>
               <p>
-                Provozovatel si vyhrazuje právo tyto Podmínky kdykoli změnit.
-                O změnách budou uživatelé informováni prostřednictvím Služby
-                nebo e-mailem. Pokračováním v používání Služby po změně
-                Podmínek vyjadřujete souhlas s novými Podmínkami.
+                Provozovatel si vyhrazuje právo tyto Podmínky kdykoli změnit. O
+                změnách budou uživatelé informováni prostřednictvím Služby nebo
+                e-mailem. Pokračováním v používání Služby po změně Podmínek
+                vyjadřujete souhlas s novými Podmínkami.
               </p>
             </section>
 
@@ -220,9 +210,9 @@ export default function PodminkyPage() {
                 řešeny příslušnými soudy České republiky.
               </p>
               <p>
-                Pokud bude některé ustanovení těchto Podmínek shledáno
-                neplatným nebo nevynutitelným, zbývající ustanovení zůstanou v
-                plné platnosti a účinnosti.
+                Pokud bude některé ustanovení těchto Podmínek shledáno neplatným
+                nebo nevynutitelným, zbývající ustanovení zůstanou v plné
+                platnosti a účinnosti.
               </p>
             </section>
 

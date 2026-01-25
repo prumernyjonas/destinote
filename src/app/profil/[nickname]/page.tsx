@@ -52,7 +52,9 @@ export default function ProfilePage({
   const allowedTabs = new Set(["map", "articles", "badges"]);
   const qpTab = searchParams?.get("tab") || "map";
   const initialTab = allowedTabs.has(qpTab) ? qpTab : "map";
-  const [activeTab, setActiveTab] = useState<"map" | "articles" | "badges">(initialTab as "map" | "articles" | "badges");
+  const [activeTab, setActiveTab] = useState<"map" | "articles" | "badges">(
+    initialTab as "map" | "articles" | "badges",
+  );
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [articles, setArticles] = useState<Article[]>([]);
@@ -64,9 +66,12 @@ export default function ProfilePage({
   const [error, setError] = useState<string | null>(null);
   const [showTimeoutError, setShowTimeoutError] = useState(false);
   const [modalType, setModalType] = useState<"followers" | "following" | null>(
-    null
+    null,
   );
-  const [deleteModal, setDeleteModal] = useState<{ articleId: string; articleTitle: string } | null>(null);
+  const [deleteModal, setDeleteModal] = useState<{
+    articleId: string;
+    articleTitle: string;
+  } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   // Pro vlastní profil - editace
@@ -85,7 +90,7 @@ export default function ProfilePage({
     const decodedNickname = decodeURIComponent(nickname);
     const isUuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        decodedNickname
+        decodedNickname,
       );
 
     if (isUuid && profile) {
@@ -102,15 +107,17 @@ export default function ProfilePage({
     const decodedNickname = decodeURIComponent(nickname);
     const isUuid =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        decodedNickname
+        decodedNickname,
       );
-    
+
     // Přesměrovat jen pokud to není UUID (UUID se řeší v jiném useEffect)
     if (!isUuid) {
       const slugged = slugifyNickname(decodedNickname);
       if (slugged !== nickname) {
         const tab = searchParams?.get("tab");
-        const url = tab ? `/profil/${slugged}?tab=${tab}` : `/profil/${slugged}`;
+        const url = tab
+          ? `/profil/${slugged}?tab=${tab}`
+          : `/profil/${slugged}`;
         router.replace(url);
       }
     }
@@ -121,7 +128,7 @@ export default function ProfilePage({
       const slugged = slugifyNickname(decodeURIComponent(nickname));
       router.push(`/profil/${slugged}?tab=${tab}`, { scroll: false });
     },
-    [router, nickname]
+    [router, nickname],
   );
 
   // Sync tab with query param
@@ -172,7 +179,9 @@ export default function ProfilePage({
           setLoading(false);
           isLoadingRef.current = false;
           if (!profile) {
-            setError("Načítání profilu trvalo příliš dlouho. Zkuste to prosím znovu.");
+            setError(
+              "Načítání profilu trvalo příliš dlouho. Zkuste to prosím znovu.",
+            );
           }
         }
       }, 15000); // 15 sekund timeout
@@ -190,7 +199,7 @@ export default function ProfilePage({
 
         let profileRes: Response;
         try {
-          profileRes = await fetch(`/api/users/${nickname}`, { 
+          profileRes = await fetch(`/api/users/${nickname}`, {
             headers,
             signal: controller.signal,
           });
@@ -222,17 +231,19 @@ export default function ProfilePage({
           ? `/api/articles?mine=true&userId=${userId}`
           : `/api/articles?authorId=${userId}&status=approved`;
         fetch(articlesUrl)
-          .then((res) => res.ok ? res.json() : null)
+          .then((res) => (res.ok ? res.json() : null))
           .then((articlesData) => {
             if (articlesData?.items) {
               setArticles(articlesData.items);
             }
           })
-          .catch((err) => console.error("[ProfilePage] Chyba při načítání článků:", err));
+          .catch((err) =>
+            console.error("[ProfilePage] Chyba při načítání článků:", err),
+          );
 
         // Načíst navštívené země (neblokující)
         fetch(`/api/visited?userId=${userId}`)
-          .then((res) => res.ok ? res.json() : null)
+          .then((res) => (res.ok ? res.json() : null))
           .then((visitedData) => {
             if (visitedData?.data) {
               setVisitedCountries(
@@ -240,19 +251,24 @@ export default function ProfilePage({
                   iso2: c.iso2,
                   name: c.name,
                   id: c.id || c.country_id,
-                }))
+                })),
               );
             }
           })
-          .catch((err) => console.error("[ProfilePage] Chyba při načítání zemí:", err));
+          .catch((err) =>
+            console.error("[ProfilePage] Chyba při načítání zemí:", err),
+          );
 
         // Pro vlastní profil načíst i odznaky (neblokující)
         if (isOwn) {
-          dbUtils.getBadges(userId)
+          dbUtils
+            .getBadges(userId)
             .then((badgesData) => {
               setBadges(Array.isArray(badgesData) ? badgesData : []);
             })
-            .catch((err) => console.error("[ProfilePage] Chyba při načítání odznaků:", err));
+            .catch((err) =>
+              console.error("[ProfilePage] Chyba při načítání odznaků:", err),
+            );
         }
       } catch (err: any) {
         console.error("[ProfilePage] Chyba při načítání profilu:", err);
@@ -272,7 +288,9 @@ export default function ProfilePage({
       // Počkat max 3 sekundy na user, pak načíst profil i bez něj
       const userTimeout = setTimeout(() => {
         if (!user && authLoading) {
-          console.log("[ProfilePage] User se nenačetl, načítám profil bez user objektu");
+          console.log(
+            "[ProfilePage] User se nenačetl, načítám profil bez user objektu",
+          );
           loadProfile();
         }
       }, 3000);
@@ -310,7 +328,6 @@ export default function ProfilePage({
     }
   };
 
-
   const handleRemoveCountry = async (iso2: string) => {
     if (!user) return;
     try {
@@ -323,7 +340,7 @@ export default function ProfilePage({
             "Content-Type": "application/json",
             "x-user-id": user.uid,
           },
-        }
+        },
       );
       if (!delRes.ok) {
         let message = `DELETE /api/visited ${delRes.status}`;
@@ -359,10 +376,13 @@ export default function ProfilePage({
         headers["Authorization"] = `Bearer ${accessToken}`;
       }
 
-      const delRes = await fetch(`/api/articles/${encodeURIComponent(deleteModal.articleId)}`, {
-        method: "DELETE",
-        headers,
-      });
+      const delRes = await fetch(
+        `/api/articles/${encodeURIComponent(deleteModal.articleId)}`,
+        {
+          method: "DELETE",
+          headers,
+        },
+      );
 
       if (!delRes.ok) {
         const errorData = await delRes.json().catch(() => ({}));
@@ -400,7 +420,9 @@ export default function ProfilePage({
     if (!profile && authLoading && !user) {
       const timeout = setTimeout(() => {
         if (!profile && authLoading && !user) {
-          console.warn("[ProfilePage] authLoading timeout - pokračuji bez user objektu");
+          console.warn(
+            "[ProfilePage] authLoading timeout - pokračuji bez user objektu",
+          );
           // Nechat pokračovat - profil se může načíst i bez user objektu
         }
       }, 5000);
@@ -414,8 +436,12 @@ export default function ProfilePage({
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center max-w-md mx-4">
-          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Chyba při načítání</h1>
-          <p className="text-gray-600 mb-4">Načítání profilu trvalo příliš dlouho.</p>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+            Chyba při načítání
+          </h1>
+          <p className="text-gray-600 mb-4">
+            Načítání profilu trvalo příliš dlouho.
+          </p>
           <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
@@ -516,11 +542,13 @@ export default function ProfilePage({
           {/* Tabs bar - pouze pro vlastní profil */}
           {isOwnProfile && (
             <div className="border-t border-slate-200 bg-slate-50/40">
-              <ProfileTabs activeTab={activeTab} onTabChange={handleTabChange} />
+              <ProfileTabs
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+              />
             </div>
           )}
         </div>
-
 
         {/* VLASTNÍ PROFIL - zobrazení podle tabu */}
         {isOwnProfile && (
@@ -531,7 +559,10 @@ export default function ProfilePage({
                   <CardHeader className="px-6 pt-6">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                        <FiMap className="w-5 h-5 text-emerald-600" aria-hidden="true" />
+                        <FiMap
+                          className="w-5 h-5 text-emerald-600"
+                          aria-hidden="true"
+                        />
                         Interaktivní mapa cest
                       </CardTitle>
                       <span className="text-sm text-slate-600 whitespace-nowrap">
@@ -562,7 +593,7 @@ export default function ProfilePage({
                       </div>
                     )}
                     <div className="rounded-2xl overflow-hidden border border-slate-200 flex-1 min-h-0">
-                      <div className="h-full min-h-[320px] sm:min-h-[420px]">
+                      <div className="h-full min-h-80 sm:min-h-105">
                         <DashboardPublicWorldMap
                           userId={user!.uid}
                           unvisitRequest={unvisitReq}
@@ -577,9 +608,8 @@ export default function ProfilePage({
                           }}
                           onVisitSaved={async () => {
                             try {
-                              const refreshed = await dbUtils.getVisitedCountries(
-                                user!.uid
-                              );
+                              const refreshed =
+                                await dbUtils.getVisitedCountries(user!.uid);
                               setVisitedCountries(refreshed);
                               if (profile) {
                                 setProfile({
@@ -652,7 +682,10 @@ export default function ProfilePage({
                 <Card className="rounded-2xl border border-slate-200 shadow-sm min-h-[600px] flex flex-col">
                   <CardHeader className="px-6 pt-6">
                     <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <FiAward className="w-5 h-5 text-emerald-600" aria-hidden="true" />
+                      <FiAward
+                        className="w-5 h-5 text-emerald-600"
+                        aria-hidden="true"
+                      />
                       Odznaky
                     </CardTitle>
                   </CardHeader>
@@ -768,7 +801,9 @@ export default function ProfilePage({
               Smazat článek?
             </h2>
             <p className="text-slate-600 mb-6">
-              Opravdu chcete smazat článek <strong>"{deleteModal.articleTitle}"</strong>? Tato akce je nevratná.
+              Opravdu chcete smazat článek{" "}
+              <strong>"{deleteModal.articleTitle}"</strong>? Tato akce je
+              nevratná.
             </p>
             <div className="flex justify-end gap-3">
               <button

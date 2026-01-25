@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     const { data: countriesData, error } = await admin
       .from("countries")
       .select("id, name, name_cs, iso_code")
-      .order("name_cs", { ascending: true, nullsLast: true });
+      .order("name_cs", { ascending: true });
 
     if (error) {
       console.error("Chyba při načítání zemí:", error);

@@ -115,14 +115,17 @@ export default function ArticleReviewDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby="drawer-title"
-        className={`fixed right-0 top-0 h-full w-full sm:w-[520px] bg-white shadow-xl z-50 transform transition-transform duration-200 ease-out ${
+        className={`fixed right-0 top-0 h-full w-full sm:w-130 bg-white shadow-xl z-50 transform transition-transform duration-200 ease-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="h-full flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-slate-200">
-            <h2 id="drawer-title" className="text-lg font-semibold text-slate-900">
+            <h2
+              id="drawer-title"
+              className="text-lg font-semibold text-slate-900"
+            >
               {readOnly ? "Detail článku" : "Recenze článku"}
             </h2>
             <button
@@ -157,10 +160,13 @@ export default function ArticleReviewDrawer({
                 </h3>
                 <div className="flex items-center gap-4 text-sm text-slate-500 flex-wrap">
                   <span>
-                    Autor: {article.authorNickname || article.author_id.substring(0, 8) + "..."}
+                    Autor:{" "}
+                    {article.authorNickname ||
+                      article.author_id.substring(0, 8) + "..."}
                   </span>
                   <span>
-                    Vytvořeno: {new Date(article.created_at).toLocaleDateString("cs-CZ", {
+                    Vytvořeno:{" "}
+                    {new Date(article.created_at).toLocaleDateString("cs-CZ", {
                       day: "numeric",
                       month: "long",
                       year: "numeric",
@@ -168,17 +174,19 @@ export default function ArticleReviewDrawer({
                   </span>
                   {readOnly && article.published_at && (
                     <span>
-                      Publikováno: {new Date(article.published_at).toLocaleDateString("cs-CZ", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
+                      Publikováno:{" "}
+                      {new Date(article.published_at).toLocaleDateString(
+                        "cs-CZ",
+                        {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        },
+                      )}
                     </span>
                   )}
                   {readOnly && article.approvedByNickname && (
-                    <span>
-                      Schválil: {article.approvedByNickname}
-                    </span>
+                    <span>Schválil: {article.approvedByNickname}</span>
                   )}
                 </div>
               </div>
@@ -199,14 +207,17 @@ export default function ArticleReviewDrawer({
               {/* Destination */}
               {article.destination && (
                 <div className="text-sm text-slate-600">
-                  <span className="font-medium">Destinace:</span> {article.destination}
+                  <span className="font-medium">Destinace:</span>{" "}
+                  {article.destination}
                 </div>
               )}
 
               {/* Summary */}
               {article.summary && (
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Shrnutí</h4>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">
+                    Shrnutí
+                  </h4>
                   <p className="text-sm text-slate-600 whitespace-pre-wrap">
                     {article.summary}
                   </p>
@@ -216,7 +227,9 @@ export default function ArticleReviewDrawer({
               {/* Content */}
               {article.content && (
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-700 mb-2">Obsah</h4>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-2">
+                    Obsah
+                  </h4>
                   <div className="text-sm text-slate-600 whitespace-pre-wrap prose prose-sm max-w-none">
                     {article.content}
                   </div>
@@ -266,7 +279,7 @@ export default function ArticleReviewDrawer({
               </div>
             </div>
           )}
-          
+
           {readOnly && (
             <div className="p-6 border-t border-slate-200">
               <Button

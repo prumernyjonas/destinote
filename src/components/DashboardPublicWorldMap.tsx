@@ -16,7 +16,7 @@ type DashboardPublicWorldMapProps = {
   userId: string;
   onVisitSaved?: (iso2: string, name: string) => void;
   geojsonUrl?: string;
-  // požadavek z parenta: odbarvit konkrétní ISO2 (nonce kvůli opakovanému volání)
+  // požadavek z parenta: odbarvit konkrétní ISO2 
   unvisitRequest?: { iso2: string; nonce: number };
   // volitelné: informuj parenta po preloadu seznamu, aby si sjednotil počty
   onVisitedPreload?: (
@@ -89,7 +89,6 @@ export default function DashboardPublicWorldMap({
   function getIso2FromProps(props: any): string | undefined {
     const rawName: string =
       props?.NAME_LONG || props?.ADMIN || props?.NAME || props?.name || "";
-    // 0) Preferovat ISO_A2 / ISO3166-1-Alpha-2 z dat (když je k dispozici a není "-99")
     const isoA2Raw = props?.ISO_A2 || props?.["ISO3166-1-Alpha-2"];
     if (
       typeof isoA2Raw === "string" &&
