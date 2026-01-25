@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { slugifyNickname } from "@/utils/slugify";
 import {
   Card,
   CardContent,
@@ -59,9 +61,12 @@ function Podium({ top3 }: { top3: LeaderboardEntry[] }) {
             alt={second.displayName}
             className="h-16 w-16 rounded-full mt-3"
           />
-          <div className="mt-2 text-gray-900 font-medium">
+          <Link
+            href={`/profil/${slugifyNickname(second.displayName)}`}
+            className="mt-2 text-gray-900 font-medium hover:text-emerald-600 hover:underline transition-colors"
+          >
             {second.displayName}
-          </div>
+          </Link>
           <div className="mt-1 text-green-700 font-bold">
             {formatNumber(second.score)} b
           </div>
@@ -85,9 +90,12 @@ function Podium({ top3 }: { top3: LeaderboardEntry[] }) {
           alt={first.displayName}
           className="h-20 w-20 rounded-full mt-3 ring-4 ring-yellow-200"
         />
-        <div className="mt-2 text-gray-900 font-semibold">
+        <Link
+          href={`/profil/${slugifyNickname(first.displayName)}`}
+          className="mt-2 text-gray-900 font-semibold hover:text-emerald-600 hover:underline transition-colors"
+        >
           {first.displayName}
-        </div>
+        </Link>
         <div className="mt-1 text-green-700 font-extrabold">
           {formatNumber(first.score)} b
         </div>
@@ -105,9 +113,12 @@ function Podium({ top3 }: { top3: LeaderboardEntry[] }) {
             alt={third.displayName}
             className="h-16 w-16 rounded-full mt-3"
           />
-          <div className="mt-2 text-gray-900 font-medium">
+          <Link
+            href={`/profil/${slugifyNickname(third.displayName)}`}
+            className="mt-2 text-gray-900 font-medium hover:text-emerald-600 hover:underline transition-colors"
+          >
             {third.displayName}
-          </div>
+          </Link>
           <div className="mt-1 text-green-700 font-bold">
             {formatNumber(third.score)} b
           </div>
@@ -187,9 +198,12 @@ function LeaderboardTable({ items }: { items: LeaderboardEntry[] }) {
                           className="h-8 w-8 rounded-full"
                         />
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-900 font-medium">
+                          <Link
+                            href={`/profil/${slugifyNickname(u.displayName)}`}
+                            className="text-gray-900 font-medium hover:text-emerald-600 hover:underline transition-colors"
+                          >
                             {u.displayName}
-                          </span>
+                          </Link>
                           {u.badges.length > 0 && (
                             <span className="text-base" title="Odznaky">
                               {u.badges.join(" ")}

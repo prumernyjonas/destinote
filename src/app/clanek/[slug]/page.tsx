@@ -54,7 +54,7 @@ async function getArticle(slug: string): Promise<ArticleRecord | null> {
   const { data, error } = await admin
     .from("articles")
     .select(
-      "id, slug, title, summary, content, author_id, status, published_at, created_at, main_image_url, main_image_alt, main_image_width, main_image_height, destination"
+      "id, slug, title, summary, content, author_id, status, published_at, created_at, main_image_url, main_image_alt, main_image_width, main_image_height, destination",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -71,9 +71,11 @@ async function getArticle(slug: string): Promise<ArticleRecord | null> {
   return data as ArticleRecord;
 }
 
-async function getCountryInfo(destinationName: string | null): Promise<CountryInfo> {
+async function getCountryInfo(
+  destinationName: string | null,
+): Promise<CountryInfo> {
   if (!destinationName) return null;
-  
+
   const admin = createAdminSupabaseClient();
   // Hledat zemi podle názvu (zkusit český název i anglický)
   const { data, error } = await admin
@@ -105,7 +107,10 @@ async function getAuthorInfo(authorId: string): Promise<AuthorInfo> {
   return data as AuthorInfo;
 }
 
-async function getArticlePhotos(articleId: string, mainImageUrl: string | null): Promise<ArticlePhoto[]> {
+async function getArticlePhotos(
+  articleId: string,
+  mainImageUrl: string | null,
+): Promise<ArticlePhoto[]> {
   const admin = createAdminSupabaseClient();
   const { data, error } = await admin
     .from("article_photos")
@@ -120,9 +125,9 @@ async function getArticlePhotos(articleId: string, mainImageUrl: string | null):
   // Pokud existuje hlavní obrázek, ujistíme se, že je první
   // Pokud hlavní obrázek není v article_photos, přidáme ho na začátek
   const photos = [...data];
-  
+
   if (mainImageUrl) {
-    const mainPhotoIndex = photos.findIndex(p => p.url === mainImageUrl);
+    const mainPhotoIndex = photos.findIndex((p) => p.url === mainImageUrl);
     if (mainPhotoIndex > 0) {
       // Přesunout hlavní fotku na začátek
       const mainPhoto = photos.splice(mainPhotoIndex, 1)[0];
@@ -217,11 +222,12 @@ export default async function ArticlePage({
     formatDate(article.published_at) || formatDate(article.created_at);
 
   // Získat URL pro zemi
-  const countryUrl = country?.slug && country?.continent_slug
-    ? `/zeme/${country.continent_slug}/${country.slug}`
-    : null;
+  const countryUrl =
+    country?.slug && country?.continent_slug
+      ? `/zeme/${country.continent_slug}/${country.slug}`
+      : null;
   const countryName = country?.name_cs || country?.name || null;
-  
+
   // Získat URL pro autora
   const authorUrl = author?.nickname
     ? `/profil/${slugifyNickname(author.nickname)}`
@@ -231,11 +237,11 @@ export default async function ArticlePage({
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Breadcrumbs */}
-        <nav className="flex items-center gap-2 text-sm text-gray-500" aria-label="Breadcrumb">
-          <Link
-            href="/"
-            className="hover:text-gray-700 transition-colors"
-          >
+        <nav
+          className="flex items-center gap-2 text-sm text-gray-500"
+          aria-label="Breadcrumb"
+        >
+          <Link href="/" className="hover:text-gray-700 transition-colors">
             Domů
           </Link>
           <span className="text-gray-400">/</span>
@@ -332,7 +338,9 @@ export default async function ArticlePage({
           {(countryName || article.destination) && (
             <div className="flex items-center gap-2">
               {country?.iso_code && (
-                <span className={`fi fi-${country.iso_code.toLowerCase()} text-xl`} />
+                <span
+                  className={`fi fi-${country.iso_code.toLowerCase()} text-xl`}
+                />
               )}
               {countryUrl ? (
                 <Link
@@ -358,4 +366,3 @@ export default async function ArticlePage({
     </main>
   );
 }
-
