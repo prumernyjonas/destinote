@@ -72,8 +72,38 @@ export const dbUtils = {
   },
 
   async getBadges(uid: string): Promise<Badge[]> {
-    // Dodelat
-    return [];
+    const [badgesRes, userBadgesRes] = await Promise.all([
+      supabase.from("badges").select("id, name, description, icon_url").order("id"),
+      supabase
+        .from("user_badges")
+        .select("badge_id, awarded_at")
+        .eq("user_id", uid),
+    ]);
+    if (badgesRes.error) throw new Error(badgesRes.error.message);
+    const badges = (badgesRes.data ?? []) as {
+      id: string;
+      name: string;
+      description: string | null;
+      icon_url: string | null;
+    }[];
+    const awardedList = userBadgesRes.error ? [] : (userBadgesRes.data ?? []);
+    if (userBadgesRes.error) {
+      console.warn("[getBadges] user_badges:", userBadgesRes.error.message);
+    }
+    const awarded = new Map<string, string>(
+      awardedList.map((r: { badge_id: string; awarded_at: string }) => [
+        r.badge_id,
+        r.awarded_at,
+      ])
+    );
+    return badges.map((b) => ({
+      id: b.id,
+      name: b.name,
+      description: b.description ?? "",
+      iconUrl: b.icon_url ?? undefined,
+      earnedAt: awarded.has(b.id) ? new Date(awarded.get(b.id)!) : undefined,
+      progress: awarded.has(b.id) ? 100 : 0,
+    }));
   },
 
   // Agregovaný počet navštívených zemí z tabulky user_country_counts (fallback na COUNT)

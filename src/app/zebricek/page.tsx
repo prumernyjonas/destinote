@@ -40,6 +40,29 @@ function timeFromNow(iso: string) {
   return `před ${diffD} dny`;
 }
 
+function StatPill({
+  children,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  tone?: "neutral" | "gold" | "silver" | "bronze";
+}) {
+  const tones: Record<string, string> = {
+    neutral: "bg-slate-50 text-slate-700 ring-slate-200",
+    gold: "bg-yellow-50 text-yellow-700 ring-yellow-200",
+    silver: "bg-gray-50 text-gray-700 ring-gray-200",
+    bronze: "bg-orange-50 text-orange-700 ring-orange-200",
+  };
+
+  return (
+    <span
+      className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${tones[tone]}`}
+    >
+      {children}
+    </span>
+  );
+}
+
 function Podium({ top3 }: { top3: LeaderboardEntry[] }) {
   const [first, second, third] = top3;
 
@@ -52,10 +75,12 @@ function Podium({ top3 }: { top3: LeaderboardEntry[] }) {
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {second && (
         <Card
-          className="order-2 sm:order-1 flex flex-col items-center"
+          className="order-2 sm:order-1 flex flex-col items-center gap-1"
           padding="lg"
         >
-          <div className="text-2xl font-bold text-gray-900">#{second.rank}</div>
+          <div className="inline-flex items-center rounded-full bg-gray-50 px-3 py-1 text-sm font-extrabold text-slate-900 ring-1 ring-inset ring-gray-200">
+            #{second.rank}
+          </div>
           <img
             src={second.avatarUrl}
             alt={second.displayName}
@@ -63,26 +88,20 @@ function Podium({ top3 }: { top3: LeaderboardEntry[] }) {
           />
           <Link
             href={`/profil/${slugifyNickname(second.displayName)}`}
-            className="mt-2 text-gray-900 font-medium hover:text-emerald-600 hover:underline transition-colors"
+            className="mt-2 text-base text-slate-900 font-semibold hover:text-emerald-600 hover:underline underline-offset-4 transition-colors"
           >
             {second.displayName}
           </Link>
-          <div className="mt-1 text-green-700 font-bold">
-            {formatNumber(second.score)} b
-          </div>
-          <div className="mt-1 text-sm text-gray-600">
-            {second.countryCount} zemí
-          </div>
-          <div className="mt-2 text-xl">{second.badges.join(" ")}</div>
+          <StatPill tone="silver">{second.countryCount} zemí</StatPill>
         </Card>
       )}
 
       <Card
-        className="order-1 sm:order-2 flex flex-col items-center sm:transform sm:-translate-y-2"
+        className="order-1 sm:order-2 flex flex-col items-center gap-1 sm:transform sm:-translate-y-2"
         padding="lg"
         variant="elevated"
       >
-        <div className="text-3xl font-extrabold text-yellow-600">
+        <div className="inline-flex items-center rounded-full bg-yellow-50 px-3 py-1 text-sm font-black text-yellow-800 ring-1 ring-inset ring-yellow-200">
           #{first.rank}
         </div>
         <img
@@ -92,22 +111,30 @@ function Podium({ top3 }: { top3: LeaderboardEntry[] }) {
         />
         <Link
           href={`/profil/${slugifyNickname(first.displayName)}`}
-          className="mt-2 text-gray-900 font-semibold hover:text-emerald-600 hover:underline transition-colors"
+          className="mt-2 text-base text-slate-900 font-bold hover:text-emerald-600 hover:underline underline-offset-4 transition-colors"
         >
           {first.displayName}
         </Link>
-        <div className="mt-1 text-green-700 font-extrabold">
-          {formatNumber(first.score)} b
-        </div>
-        <div className="mt-1 text-sm text-gray-600">
-          {first.countryCount} zemí
-        </div>
-        <div className="mt-2 text-2xl">{first.badges.join(" ")}</div>
+        <StatPill tone="gold">{first.countryCount} zemí</StatPill>
+        {first.badges.length > 0 && (
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            {first.badges.map((b, i) => (
+              <span
+                key={`${b}-${i}`}
+                className="inline-flex items-center rounded-full bg-slate-900/5 px-3 py-1 text-xs font-semibold text-slate-700"
+              >
+                {b}
+              </span>
+            ))}
+          </div>
+        )}
       </Card>
 
       {third && (
-        <Card className="order-3 flex flex-col items-center" padding="lg">
-          <div className="text-2xl font-bold text-gray-900">#{third.rank}</div>
+        <Card className="order-3 flex flex-col items-center gap-1" padding="lg">
+          <div className="inline-flex items-center rounded-full bg-orange-50 px-3 py-1 text-sm font-extrabold text-slate-900 ring-1 ring-inset ring-orange-200">
+            #{third.rank}
+          </div>
           <img
             src={third.avatarUrl}
             alt={third.displayName}
@@ -115,17 +142,23 @@ function Podium({ top3 }: { top3: LeaderboardEntry[] }) {
           />
           <Link
             href={`/profil/${slugifyNickname(third.displayName)}`}
-            className="mt-2 text-gray-900 font-medium hover:text-emerald-600 hover:underline transition-colors"
+            className="mt-2 text-base text-slate-900 font-semibold hover:text-emerald-600 hover:underline underline-offset-4 transition-colors"
           >
             {third.displayName}
           </Link>
-          <div className="mt-1 text-green-700 font-bold">
-            {formatNumber(third.score)} b
-          </div>
-          <div className="mt-1 text-sm text-gray-600">
-            {third.countryCount} zemí
-          </div>
-          <div className="mt-2 text-xl">{third.badges.join(" ")}</div>
+          <StatPill tone="bronze">{third.countryCount} zemí</StatPill>
+          {third.badges.length > 0 && (
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {third.badges.map((b, i) => (
+                <span
+                  key={`${b}-${i}`}
+                  className="inline-flex items-center rounded-full bg-slate-900/5 px-3 py-1 text-xs font-semibold text-slate-700"
+                >
+                  {b}
+                </span>
+              ))}
+            </div>
+          )}
         </Card>
       )}
     </div>
@@ -179,15 +212,17 @@ function LeaderboardTable({ items }: { items: LeaderboardEntry[] }) {
                 <tr className="text-left text-xs font-semibold text-gray-500">
                   <th className="py-3 pr-3">#</th>
                   <th className="py-3 pr-3">Uživatel</th>
-                  <th className="py-3 pr-3">Body</th>
                   <th className="py-3 pr-3 hidden sm:table-cell">Země</th>
                   <th className="py-3 pr-3 hidden md:table-cell">Aktivita</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {items.map((u) => (
-                  <tr key={u.id} className="text-sm">
-                    <td className="py-3 pr-3 font-semibold text-gray-900">
+                  <tr
+                    key={u.id}
+                    className="text-sm hover:bg-slate-50/70 transition-colors"
+                  >
+                    <td className="py-3 pr-3 font-bold text-slate-900">
                       {u.rank}
                     </td>
                     <td className="py-3 pr-3">
@@ -200,25 +235,17 @@ function LeaderboardTable({ items }: { items: LeaderboardEntry[] }) {
                         <div className="flex items-center gap-2">
                           <Link
                             href={`/profil/${slugifyNickname(u.displayName)}`}
-                            className="text-gray-900 font-medium hover:text-emerald-600 hover:underline transition-colors"
+                            className="text-slate-900 font-semibold hover:text-emerald-600 hover:underline underline-offset-4 transition-colors"
                           >
                             {u.displayName}
                           </Link>
-                          {u.badges.length > 0 && (
-                            <span className="text-base" title="Odznaky">
-                              {u.badges.join(" ")}
-                            </span>
-                          )}
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 pr-3 font-semibold text-green-700">
-                      {formatNumber(u.score)}
-                    </td>
-                    <td className="py-3 pr-3 hidden sm:table-cell">
+                    <td className="py-3 pr-3 hidden sm:table-cell text-slate-700 font-medium">
                       {u.countryCount}
                     </td>
-                    <td className="py-3 pr-3 hidden md:table-cell text-gray-500">
+                    <td className="py-3 pr-3 hidden md:table-cell text-slate-500">
                       {timeFromNow(u.updatedAt)}
                     </td>
                   </tr>
@@ -287,15 +314,10 @@ export default function LeaderboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Žebříček</h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-slate-600 mt-2">
             Top cestovatelé podle počtu navštívených zemí
           </p>
         </div>
-        {/* <div className="hidden sm:flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            Pouze přátelé
-          </Button>
-        </div> */}
       </div>
 
       <ErrorMessage error={error} className="mt-4" />
@@ -307,10 +329,6 @@ export default function LeaderboardPage() {
           <Podium top3={top3} />
         ) : null}
       </section>
-
-      {/* <section className="mt-6">
-        {loading ? <TableSkeleton /> : <LeaderboardTable items={rest} />}
-      </section> */}
 
       {loading && (
         <div className="mt-8 flex justify-center">

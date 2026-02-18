@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createNotification, buildCommentNewNotification } from "@/lib/notifications";
 
 async function resolveUserId(req: NextRequest): Promise<string | null> {
   const supa = await createServerSupabaseClient();
@@ -214,6 +215,48 @@ export async function POST(
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
     });
+
+  let recipientId: string | null = null;
+  if (parent_id) {
+    const { data: parent } = await admin
+      .from("comments")
+      .select("author_id")
+      .eq("id", parent_id)
+      .maybeSingle();
+    if (parent && parent.author_id !== userId) recipientId = parent.author_id;
+  } else {
+    const { data: art } = await admin
+      .from("articles")
+      .select("author_id, title, slug")
+      .eq("id", articleId)
+      .maybeSingle();
+    if (art && art.author_id !== userId) recipientId = art.author_id;
+  }
+
+  if (recipientId) {
+    const { data: art } = await admin
+      .from("articles")
+      .select("title, slug")
+      .eq("id", articleId)
+      .maybeSingle();
+    if (art) {
+      try {
+        await createNotification(
+          admin,
+          buildCommentNewNotification({
+            recipientId,
+            articleTitle: art.title,
+            articleSlug: art.slug,
+            articleId,
+            commentId: data.id,
+            actorId: userId,
+          })
+        );
+      } catch (e) {
+        console.error("[comments.POST] createNotification failed:", e);
+      }
+    }
+  }
 
   return new Response(JSON.stringify({ id: data.id }), {
     status: 201,

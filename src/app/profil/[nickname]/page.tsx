@@ -144,6 +144,15 @@ export default function ProfilePage({
     }
   }, [searchParams]);
 
+  // Při otevření záložky Odznaky znovu načíst odznaky (vlastní profil), aby se projevily nové záznamy
+  useEffect(() => {
+    if (activeTab !== "badges" || !isOwnProfile || !profile?.id) return;
+    dbUtils
+      .getBadges(profile.id)
+      .then((badgesData) => setBadges(Array.isArray(badgesData) ? badgesData : []))
+      .catch((err) => console.error("[ProfilePage] Chyba při načítání odznaků:", err));
+  }, [activeTab, isOwnProfile, profile?.id]);
+
   // Helper pro získání access tokenu z localStorage
   const getAccessToken = (): string | null => {
     const keys = Object.keys(localStorage);
@@ -259,17 +268,15 @@ export default function ProfilePage({
             console.error("[ProfilePage] Chyba při načítání zemí:", err),
           );
 
-        // Pro vlastní profil načíst i odznaky (neblokující)
-        if (isOwn) {
-          dbUtils
-            .getBadges(userId)
-            .then((badgesData) => {
-              setBadges(Array.isArray(badgesData) ? badgesData : []);
-            })
-            .catch((err) =>
-              console.error("[ProfilePage] Chyba při načítání odznaků:", err),
-            );
-        }
+        // Načíst odznaky pro tento profil (vlastní i cizí – zobrazení na public profilu)
+        dbUtils
+          .getBadges(userId)
+          .then((badgesData) => {
+            setBadges(Array.isArray(badgesData) ? badgesData : []);
+          })
+          .catch((err) =>
+            console.error("[ProfilePage] Chyba při načítání odznaků:", err),
+          );
       } catch (err: any) {
         console.error("[ProfilePage] Chyba při načítání profilu:", err);
         setError(err.message || "Nastala chyba");
@@ -679,18 +686,14 @@ export default function ProfilePage({
 
             {activeTab === "badges" && (
               <div className="mt-6 pb-8">
-                <Card className="rounded-2xl border border-slate-200 shadow-sm min-h-[600px] flex flex-col">
-                  <CardHeader className="px-6 pt-6">
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <FiAward
-                        className="w-5 h-5 text-emerald-600"
-                        aria-hidden="true"
-                      />
-                      Odznaky
+                <Card className="rounded-2xl border border-slate-200 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-semibold">
+                      Odznaky ({badges.filter((b) => b.earnedAt).length})
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="px-6 pb-6 flex-1">
-                    <BadgesGrid badges={badges} />
+                  <CardContent className="pt-0">
+                    <BadgesGrid badges={badges} compact />
                   </CardContent>
                 </Card>
               </div>
@@ -701,6 +704,20 @@ export default function ProfilePage({
         {/* CIZÍ PROFIL - všechno najednou */}
         {!isOwnProfile && (
           <div className="mt-6 space-y-6">
+            {/* Odznaky */}
+            {badges.length > 0 && (
+              <Card className="rounded-2xl border border-slate-200 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold">
+                    Odznaky ({badges.filter((b) => b.earnedAt).length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <BadgesGrid badges={badges} compact />
+                </CardContent>
+              </Card>
+            )}
+
             {/* Navštívené země */}
             {visitedCountries.length > 0 && (
               <Card className="rounded-2xl border border-slate-200 shadow-sm">

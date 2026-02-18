@@ -27,9 +27,12 @@ export interface Badge {
   id: string;
   name: string;
   description: string;
-  icon: string;
-  category: "travel" | "social" | "achievement";
-  requirement: {
+  /** Cesta k obrázku (např. z public/badges) – zobrazí se jako <img>. */
+  iconUrl?: string | null;
+  /** Zastaralé: emoji nebo název – fallback když není iconUrl */
+  icon?: string;
+  category?: "travel" | "social" | "achievement";
+  requirement?: {
     type: "countries_visited" | "articles_written" | "followers" | "custom";
     value: number;
     description: string;
@@ -89,4 +92,26 @@ export interface FollowListItem {
   displayName: string;
   avatarUrl: string | null;
   isFollowedByMe: boolean;
+}
+
+// Notifikace (persistentní v databázi)
+export type NotificationType =
+  | "article_approved"
+  | "article_rejected"
+  | "article_submitted"
+  | "article_like"
+  | "comment_new"
+  | "comment_like"
+  | "new_follower";
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  link: string | null;
+  metadata: Record<string, unknown> | null;
+  readAt: Date | null;
+  createdAt: Date;
 }

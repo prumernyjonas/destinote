@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getUserIdFromRequest } from "@/app/api/_utils/auth";
+import { createNotification, buildNewFollowerNotification } from "@/lib/notifications";
 
 // POST - Začít sledovat uživatele
 export async function POST(
@@ -25,7 +26,6 @@ export async function POST(
 
     const admin = createAdminSupabaseClient();
 
-    // Ověřit, že cílový uživatel existuje
     const { data: targetUser, error: targetError } = await admin
       .from("users")
       .select("id")
@@ -40,6 +40,12 @@ export async function POST(
       );
     }
 
+    const { data: followerUser } = await admin
+      .from("users")
+      .select("nickname")
+      .eq("id", currentUserId)
+      .maybeSingle();
+
     // Upsert - vložit nebo ignorovat pokud už existuje
     const { error } = await admin.from("user_follows").upsert(
       {
@@ -53,6 +59,19 @@ export async function POST(
     if (error) {
       console.error("Follow error:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    try {
+      await createNotification(
+        admin,
+        buildNewFollowerNotification({
+          targetUserId,
+          followerNickname: followerUser?.nickname ?? "Někdo",
+          followerId: currentUserId,
+        })
+      );
+    } catch (e) {
+      console.error("[follow] createNotification failed:", e);
     }
 
     return NextResponse.json({ ok: true });

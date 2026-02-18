@@ -2,6 +2,12 @@ import { NextRequest } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getUserRole, isAdmin } from "@/app/api/_utils/auth";
+import {
+  createNotification,
+  notifyAdmins,
+  buildArticleSubmittedNotification,
+  buildArticleSubmittedForAuthorNotification,
+} from "@/lib/notifications";
 
 export async function POST(
   req: NextRequest,
@@ -35,7 +41,7 @@ export async function POST(
 
   const { data: art, error: artErr } = await admin
     .from("articles")
-    .select("author_id")
+    .select("id, author_id, title, slug")
     .eq("id", id)
     .maybeSingle();
   if (artErr) {
@@ -65,6 +71,36 @@ export async function POST(
       status: 500,
     });
   }
+
+  if (owner) {
+    try {
+      await createNotification(
+        admin,
+        buildArticleSubmittedForAuthorNotification({
+          articleId: art.id,
+          articleTitle: art.title,
+          articleSlug: art.slug,
+          authorId: userId,
+        })
+      );
+    } catch (e) {
+      console.error("[submit] createNotification for author failed:", e);
+    }
+    try {
+      await notifyAdmins(
+        admin,
+        buildArticleSubmittedNotification({
+          articleId: art.id,
+          articleTitle: art.title,
+          articleSlug: art.slug,
+          authorId: userId,
+        })
+      );
+    } catch (e) {
+      console.error("[submit] notifyAdmins failed:", e);
+    }
+  }
+
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
     headers: { "content-type": "application/json" },

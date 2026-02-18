@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { createNotification, buildCommentLikeNotification } from "@/lib/notifications";
 
 export async function POST(
   _req: NextRequest,
@@ -15,10 +16,9 @@ export async function POST(
 
   const admin = createAdminSupabaseClient();
 
-  // Ensure comment exists
   const { data: comment, error: cErr } = await admin
     .from("comments")
-    .select("id")
+    .select("id, author_id, article_id")
     .eq("id", commentId)
     .maybeSingle();
   if (cErr) return new Response(JSON.stringify({ error: cErr.message }), { status: 500 });
@@ -50,6 +50,32 @@ export async function POST(
       .from("comment_likes")
       .insert({ comment_id: commentId, user_id: userId });
     if (insErr) return new Response(JSON.stringify({ error: insErr.message }), { status: 500 });
+
+    if (comment.author_id !== userId) {
+      const { data: art } = await admin
+        .from("articles")
+        .select("title, slug")
+        .eq("id", comment.article_id)
+        .maybeSingle();
+      if (art) {
+        try {
+          await createNotification(
+            admin,
+            buildCommentLikeNotification({
+              recipientId: comment.author_id,
+              articleId: comment.article_id,
+              articleTitle: art.title,
+              articleSlug: art.slug,
+              commentId,
+              actorId: userId,
+            })
+          );
+        } catch (e) {
+          console.error("[like] createNotification failed:", e);
+        }
+      }
+    }
+
     return new Response(JSON.stringify({ liked: true }), {
       status: 200,
       headers: { "content-type": "application/json" },

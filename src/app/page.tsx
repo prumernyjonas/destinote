@@ -359,7 +359,16 @@ export default function Home() {
           ))}
         </div>
       </motion.section>
-
+      <iframe
+        src="https://player.flipsnack.com?hash=QkJFRDk2RUQ3NUUrdjFpcXVqOXh1Mw=="
+        width="100%"
+        height="480"
+        seamless={true}
+        scrolling="no"
+        frameBorder="0"
+        allowFullScreen
+        allow="autoplay; clipboard-read; clipboard-write"
+      ></iframe>
       {/* World Map Section */}
       <motion.section
         initial={{ opacity: 0 }}

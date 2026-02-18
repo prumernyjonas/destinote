@@ -27,6 +27,12 @@ Vytvoří RLS (Row Level Security) politiky pro:
 - Tabulku `users`
 - Tabulku `user_follows`
 
+### 4. `migrate_notifications_for_0004.sql` (pokud tabulka notifications již existuje)
+Přizpůsobí existující tabulku `notifications` pro feature 0004:
+- Indexy pro rychlé dotazy podle recipient_id
+- RLS politiky (SELECT, UPDATE) s recipient_id
+- V případě potřeby přidejte enum hodnoty pro typy: article_approved, article_rejected, comment_new, comment_like, new_follower
+
 ## Co tyto skripty zajišťují
 
 ### Unikátnost nicknamů
@@ -38,6 +44,10 @@ Vytvoří RLS (Row Level Security) politiky pro:
 - Při registraci se automaticky vytvoří záznam v `users` tabulce
 - Nickname se načte z `user_metadata`
 - Kontrola unikátnosti proběhne automaticky
+
+### Notifikace
+- Tabulka `notifications` ukládá oznámení (schválení článků, komentáře, lajky, sledující)
+- Uživatel vidí historii oznámení po přihlášení
 
 ## Řešení problémů
 

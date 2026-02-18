@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   FiAward,
+  FiBell,
   FiChevronDown,
   FiGlobe,
   FiHelpCircle,
@@ -21,6 +22,7 @@ import {
   FiUsers,
   FiX,
 } from "react-icons/fi";
+import NotificationDropdown, { fetchUnreadCount } from "@/components/notifications/NotificationDropdown";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { supabase } from "@/lib/supabase/client";
@@ -52,6 +54,9 @@ export default function Navbar() {
   const [mobileCountriesOpen, setMobileCountriesOpen] = useState(false);
   const [mobileUserMenuOpen, setMobileUserMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notificationsRef = useRef<HTMLDivElement | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [authLoadingTimeout, setAuthLoadingTimeout] = useState(false);
   const { isAdmin } = useIsAdmin();
@@ -168,6 +173,12 @@ export default function Navbar() {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (mounted && displayUser) {
+      fetchUnreadCount().then(setUnreadCount);
+    }
+  }, [mounted, displayUser]);
+
   // Timeout pro authLoading - po 3 sekundách zobrazit UI i když authLoading je true
   useEffect(() => {
     if (authLoading) {
@@ -239,6 +250,17 @@ export default function Navbar() {
       if (!countriesRef.current) return;
       if (!countriesRef.current.contains(e.target as Node)) {
         setCountriesOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, []);
+
+  useEffect(() => {
+    const onOutside = (e: MouseEvent) => {
+      if (!notificationsRef.current) return;
+      if (!notificationsRef.current.contains(e.target as Node)) {
+        setNotificationsOpen(false);
       }
     };
     document.addEventListener("mousedown", onOutside);
@@ -493,7 +515,7 @@ export default function Navbar() {
               </Link>
             </nav>
 
-            {/* Right: Search Icon + Auth (Desktop) + Mobile Menu Button */}
+            {/* Right: Search Icon + Notifications + Auth (Desktop) + Mobile Menu Button */}
             <div className="flex items-center gap-3">
               {/* Search Icon - Desktop only */}
               <Link
@@ -503,6 +525,30 @@ export default function Navbar() {
               >
                 <FiSearch className="w-5 h-5 text-blue-900" />
               </Link>
+
+              {/* Notification Bell - Desktop, logged in only */}
+              {mounted && displayUser && (
+                <div className="hidden md:block relative" ref={notificationsRef}>
+                  <button
+                    onClick={() => setNotificationsOpen((v) => !v)}
+                    className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    aria-label="Oznámení"
+                  >
+                    <FiBell className="w-5 h-5 text-blue-900" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-xs font-semibold text-white bg-red-500 rounded-full">
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  <NotificationDropdown
+                    isOpen={notificationsOpen}
+                    onClose={() => setNotificationsOpen(false)}
+                    onUnreadCountChange={setUnreadCount}
+                    unreadCount={unreadCount}
+                  />
+                </div>
+              )}
 
               {/* Mobile Menu Button */}
               <button
@@ -929,6 +975,22 @@ export default function Navbar() {
                     >
                       <FiSettings className="text-lg" />
                       <span>Nastavení</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setMobileUserMenuOpen(false);
+                        router.push("/nastaveni/oznameni");
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-base text-white hover:bg-white/10 transition cursor-pointer"
+                    >
+                      <FiBell className="text-lg" />
+                      <span>Oznámení</span>
+                      {unreadCount > 0 && (
+                        <span className="ml-auto min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs font-semibold text-white bg-red-500 rounded-full">
+                          {unreadCount > 99 ? "99+" : unreadCount}
+                        </span>
+                      )}
                     </button>
                     <button
                       onClick={() => {
