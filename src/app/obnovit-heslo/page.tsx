@@ -25,7 +25,7 @@ export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
 
   // Shared input class for consistency
-  const inputClass = "appearance-none block w-full px-4 py-2.5 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white transition-colors";
+  const inputClass = "appearance-none block w-full px-4 py-3 bg-white/7 border border-white/10 rounded-xl text-white placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-travel-300/40 focus:border-travel-300/40 sm:text-sm backdrop-blur-sm transition-all duration-200";
 
   // Zkontrolovat, zda je token validní při načtení stránky
   useEffect(() => {
@@ -49,7 +49,9 @@ export default function ResetPasswordPage() {
           if (!mounted) return;
 
           if (setSessionError) {
-            console.error("Chyba při nastavení session:", setSessionError);
+            if (process.env.NODE_ENV === "development") {
+              console.error("Chyba při nastavení session:", setSessionError);
+            }
             setIsValidToken(false);
             setLocalError(setSessionError.message || "Neplatný nebo expirovaný odkaz pro obnovení hesla.");
             return;
@@ -69,7 +71,9 @@ export default function ResetPasswordPage() {
         if (!mounted) return;
 
         if (error) {
-          console.error("Chyba při načítání session:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.error("Chyba při načítání session:", error);
+          }
           setIsValidToken(false);
           setLocalError("Neplatný nebo expirovaný odkaz pro obnovení hesla.");
           return;
@@ -92,7 +96,9 @@ export default function ResetPasswordPage() {
         }
       } catch (err: any) {
         if (!mounted) return;
-        console.error("Chyba při ověřování odkazu:", err);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Chyba při ověřování odkazu:", err);
+        }
         setIsValidToken(false);
         setLocalError(err?.message || "Chyba při ověřování odkazu.");
       }
@@ -142,7 +148,9 @@ export default function ResetPasswordPage() {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        console.error("Session error:", sessionError);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Session error:", sessionError);
+        }
         throw new Error(sessionError.message || "Neplatná session. Prosím, použijte odkaz z emailu znovu.");
       }
 
@@ -150,18 +158,15 @@ export default function ResetPasswordPage() {
         throw new Error("Neplatná session. Prosím, použijte odkaz z emailu znovu.");
       }
 
-      // Zkontrolovat, zda je to recovery session (může být v user metadata)
-      // Supabase recovery flow vytváří session s recovery tokenem
-      console.log("Session user:", session.user);
-      console.log("Session metadata:", session.user.user_metadata);
-
       // Aktualizovat heslo
       const { error, data } = await supabase.auth.updateUser({
         password: password,
       });
 
       if (error) {
-        console.error("Chyba při aktualizaci hesla:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Chyba při aktualizaci hesla:", error);
+        }
         // Zobrazit detailnější chybovou zprávu
         let errorMessage = error.message || "Chyba při změně hesla";
         
@@ -174,8 +179,6 @@ export default function ResetPasswordPage() {
         
         throw new Error(errorMessage);
       }
-
-      console.log("Heslo úspěšně změněno:", data);
 
       // Úspěch
       setSuccess(true);
@@ -204,7 +207,7 @@ export default function ResetPasswordPage() {
       >
         <div className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
-          <p className="mt-4 text-sm text-gray-600">Ověřování odkazu...</p>
+          <p className="mt-4 text-sm text-white/50">Ověřování odkazu...</p>
         </div>
       </AuthShell>
     );
@@ -220,7 +223,7 @@ export default function ResetPasswordPage() {
             Odkaz pro obnovení hesla je neplatný nebo expirovaný.{" "}
             <Link
               href="/zapomenute-heslo"
-              className="font-medium text-green-400 hover:text-green-300 transition-colors"
+              className="font-medium text-travel-100 hover:text-white transition-colors"
             >
               Požádejte o nový odkaz
             </Link>
@@ -229,7 +232,7 @@ export default function ResetPasswordPage() {
       >
         <ErrorMessage error={localError} />
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-white/50">
             Odkaz pro obnovení hesla mohl expirovat nebo byl již použit. 
             Požádejte o nový odkaz pro obnovení hesla.
           </p>
@@ -313,7 +316,7 @@ export default function ResetPasswordPage() {
         <div>
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-gray-700 mb-1.5"
+            className="block text-sm font-medium text-white/70 mb-1.5"
           >
             Nové heslo
           </label>
@@ -349,7 +352,7 @@ export default function ResetPasswordPage() {
         <div>
           <label
             htmlFor="confirmPassword"
-            className="block text-sm font-medium text-gray-700 mb-1.5"
+            className="block text-sm font-medium text-white/70 mb-1.5"
           >
             Potvrdit nové heslo
           </label>
@@ -396,7 +399,7 @@ export default function ResetPasswordPage() {
         <div className="text-center">
           <Link
             href="/prihlaseni"
-            className="text-sm font-medium text-green-600 hover:text-green-500 transition-colors"
+            className="text-sm font-medium text-travel-100 hover:text-white transition-colors"
           >
             Zpět na přihlášení
           </Link>

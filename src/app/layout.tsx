@@ -6,6 +6,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 import Navbar from "@/components/layout/Navbar";
 import { Suspense } from "react";
 import { marble } from "@/lib/fonts";
+import { PageLoading } from "@/components/ui/PageLoading";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,8 +24,11 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Destinote",
-  description: "Interaktivní mapa světa v Next.js",
+  title: {
+    default: "Destinote",
+    template: "%s | Destinote",
+  },
+  description: "Interaktivní mapa světa, cestopisy a průvodce. Sdílejte své cesty a objevte destinace.",
   icons: {
     icon: "/logo-sm2.png",
   },
@@ -42,10 +46,12 @@ export default function RootLayout({
       >
         <ToastProvider>
           <AuthProvider>
-            <Suspense fallback={null}>
+            <Suspense fallback={<PageLoading />}>
               <Navbar />
             </Suspense>
-            <Suspense fallback={null}>{children}</Suspense>
+            <Suspense fallback={<PageLoading message="Načítám stránku…" />}>
+              {children}
+            </Suspense>
           </AuthProvider>
         </ToastProvider>
       </body>

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getCurrentUserId } from "../_utils/auth";
+import { getCurrentUserId, getUserIdFromRequest } from "../_utils/auth";
 
 function slugify(input: string): string {
   return input
@@ -51,7 +51,6 @@ export async function POST(req: NextRequest) {
     const supabase = await createServerSupabaseClient();
     const { data: userData, error: userErr } = await supabase.auth.getUser();
     let userId: string | null = userData?.user?.id ?? null;
-    console.log("[articles.POST] start, cookieUserId:", userId || null);
     // Fallback: Bearer token z Authorization headeru (pokud chybí cookies)
     if (!userId) {
       const authHeader =
@@ -59,19 +58,15 @@ export async function POST(req: NextRequest) {
       const token = authHeader?.toLowerCase().startsWith("bearer ")
         ? authHeader.slice(7)
         : null;
-      if (token)
-        console.log("[articles.POST] bearer present (length)", token.length);
       if (token) {
         const admin = createAdminSupabaseClient();
         const { data: tokenUser } = await admin.auth.getUser(token);
         if (tokenUser?.user?.id) {
           userId = tokenUser.user.id;
-          console.log("[articles.POST] resolved userId from bearer:", userId);
         }
       }
     }
     if (!userId) {
-      console.warn("[articles.POST] Unauthorized - no userId");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
       });
@@ -89,13 +84,6 @@ export async function POST(req: NextRequest) {
       main_image_height,
       main_image_alt,
     } = body || {};
-    console.log("[articles.POST] payload:", {
-      hasTitle: !!title,
-      hasContent: !!content,
-      hasSummary: !!summary,
-      hasDest: !!destination,
-      hasCover: !!main_image_url,
-    });
     if (!title || !content) {
       return new Response(
         JSON.stringify({ error: "Missing title or content" }),
@@ -116,7 +104,6 @@ export async function POST(req: NextRequest) {
     
     // Generovat unikátní slug
     const uniqueSlug = await generateUniqueSlug(admin, baseSlug);
-    console.log("[articles.POST] generated slug:", uniqueSlug, "from base:", baseSlug);
 
     const toInsert: any = {
       author_id: userId,
@@ -150,12 +137,11 @@ export async function POST(req: NextRequest) {
       .select("id, slug")
       .single();
     if (error) {
-      console.error("[articles.POST] insert error:", error.message, error);
-      
-      // Speciální handling pro duplicitní slug (i když by to nemělo nastat díky generateUniqueSlug)
+      if (process.env.NODE_ENV === "development") {
+        console.error("[articles.POST] insert error:", error.message, error);
+      }
+      // Speciální handling pro duplicitní slug
       if (error.message?.includes("articles_slug_key") || error.code === "23505") {
-        // Pokud přesto dojde k duplicitě, zkusit znovu s jiným slugem
-        console.warn("[articles.POST] Duplicate slug detected, retrying with timestamp");
         const fallbackSlug = `${baseSlug}-${Date.now()}`;
         const retryInsert = { ...toInsert, slug: fallbackSlug };
         const { data: retryData, error: retryError } = await admin
@@ -163,9 +149,11 @@ export async function POST(req: NextRequest) {
           .insert(retryInsert)
           .select("id, slug")
           .single();
-        
+
         if (retryError) {
-          console.error("[articles.POST] retry insert error:", retryError.message);
+          if (process.env.NODE_ENV === "development") {
+            console.error("[articles.POST] retry insert error:", retryError.message);
+          }
           return new Response(
             JSON.stringify({
               error: "Nepodařilo se vytvořit článek. Zkuste změnit název článku.",
@@ -190,13 +178,14 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-    console.log("[articles.POST] created:", { id: data.id, slug: data.slug });
     return new Response(JSON.stringify({ id: data.id, slug: data.slug }), {
       status: 201,
       headers: { "content-type": "application/json" },
     });
   } catch (err: any) {
-    console.error("[articles.POST] handler error:", err?.message, err);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[articles.POST] handler error:", err?.message, err);
+    }
     
     // Kontrola, zda není problém s JSON parsingem
     if (err instanceof SyntaxError) {
@@ -223,32 +212,9 @@ export async function GET(req: NextRequest) {
   const authorId = searchParams.get("authorId"); // Pro načtení článků konkrétního autora
   const admin = createAdminSupabaseClient();
 
-  // Helper pro získání userId
+  // Helper: pouze ověřený uživatel (session nebo Bearer), nikdy z query
   async function resolveUserId(): Promise<string | null> {
-    let userId: string | null = searchParams.get("userId");
-
-    if (!userId) {
-      const supabase = await createServerSupabaseClient();
-      const { data: userData } = await supabase.auth.getUser();
-      userId = userData?.user?.id ?? null;
-    }
-
-    if (!userId) {
-      const authHeader =
-        req.headers.get("authorization") || req.headers.get("Authorization");
-      const token = authHeader?.toLowerCase().startsWith("bearer ")
-        ? authHeader.slice(7)
-        : null;
-      if (token) {
-        const adminAuth = createAdminSupabaseClient();
-        const { data: tokenUser } = await adminAuth.auth.getUser(token);
-        if (tokenUser?.user?.id) {
-          userId = tokenUser.user.id;
-        }
-      }
-    }
-
-    return userId;
+    return getUserIdFromRequest(req);
   }
 
   try {
@@ -256,13 +222,11 @@ export async function GET(req: NextRequest) {
       const userId = await resolveUserId();
 
       if (!userId) {
-        console.log("[articles.GET] No userId found");
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401,
         });
       }
 
-      console.log("[articles.GET] Fetching articles for userId:", userId);
       const { data, error } = await admin
         .from("articles")
         .select("id, title, status, created_at, updated_at, slug, main_image_url, main_image_alt, published_at")
@@ -271,13 +235,14 @@ export async function GET(req: NextRequest) {
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("[articles.GET] Database error:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("[articles.GET] Database error:", error);
+        }
         return new Response(JSON.stringify({ error: error.message }), {
           status: 500,
         });
       }
 
-      console.log("[articles.GET] Found articles:", data?.length || 0, data);
       return new Response(JSON.stringify({ items: data ?? [] }), {
         status: 200,
         headers: { "content-type": "application/json" },

@@ -1,10 +1,14 @@
 import { NextRequest } from "next/server";
 
 /**
- * Debug endpoint pro kontrolu environment proměnných (bez zobrazení citlivých hodnot)
- * Pouze pro produkční prostředí - zobrazí, které proměnné jsou nastavené
+ * Debug endpoint pro kontrolu environment proměnných (bez zobrazení citlivých hodnot).
+ * V produkci vrací 404 – nepřístupný veřejně.
  */
 export async function GET(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    return new Response(null, { status: 404 });
+  }
+
   // Seznam všech environment proměnných, které aplikace potřebuje
   const requiredEnvVars = {
     // Supabase (public)

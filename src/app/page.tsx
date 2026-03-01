@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import GradientText from "@/components/ui/GradientText";
+import { ErrorMessage } from "@/components/ui/ErrorMessage";
 
 type Article = {
   id: string;
@@ -172,27 +173,27 @@ function avatarColor(seed: string) {
 export default function Home() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loadingArticles, setLoadingArticles] = useState(true);
+  const [articlesError, setArticlesError] = useState<string | null>(null);
+
+  const loadArticles = useCallback(async () => {
+    setLoadingArticles(true);
+    setArticlesError(null);
+    try {
+      const res = await fetch("/api/articles");
+      if (!res.ok) throw new Error("Nepodařilo se načíst články");
+      const data = await res.json();
+      setArticles(data.items ?? []);
+    } catch (e) {
+      setArticles([]);
+      setArticlesError(e instanceof Error ? e.message : "Nepodařilo se načíst články");
+    } finally {
+      setLoadingArticles(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoadingArticles(true);
-      try {
-        const res = await fetch("/api/articles");
-        if (!res.ok) throw new Error("Nepodařilo se načíst články");
-        const data = await res.json();
-        if (!cancelled) setArticles(data.items ?? []);
-      } catch {
-        if (!cancelled) setArticles([]);
-      } finally {
-        if (!cancelled) setLoadingArticles(false);
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    loadArticles();
+  }, [loadArticles]);
 
   const articlePreview = useMemo(() => articles.slice(0, 3), [articles]);
 
@@ -346,7 +347,7 @@ export default function Home() {
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 className="w-14 h-14 rounded-xl bg-travel-500 flex items-center justify-center text-white mb-4 shadow-lg"
               >
-                <item.icon className="w-7 h-7" />
+                <span className="w-7 h-7 flex items-center justify-center"><item.icon /></span>
               </motion.div>
               <div className="text-sm font-semibold text-gray-500 mb-1">
                 Krok {item.step}
@@ -359,16 +360,7 @@ export default function Home() {
           ))}
         </div>
       </motion.section>
-      <iframe
-        src="https://player.flipsnack.com?hash=QkJFRDk2RUQ3NUUrdjFpcXVqOXh1Mw=="
-        width="100%"
-        height="480"
-        seamless={true}
-        scrolling="no"
-        frameBorder="0"
-        allowFullScreen
-        allow="autoplay; clipboard-read; clipboard-write"
-      ></iframe>
+
       {/* World Map Section */}
       <motion.section
         initial={{ opacity: 0 }}
@@ -392,7 +384,7 @@ export default function Home() {
                 </h2>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-semibold">
-                    <FiMap className="w-3.5 h-3.5" />
+                    <span className="w-3.5 h-3.5"><FiMap /></span>
                     Tip: klikni na zemi
                   </span>
                 </div>
@@ -405,7 +397,7 @@ export default function Home() {
           <div className="px-6 sm:px-8 py-5 bg-gray-50 border-t border-gray-200">
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <div className="flex items-center gap-2 font-semibold text-gray-700">
-                <FiFlag className="text-travel-600" />
+                <span className="text-travel-600"><FiFlag /></span>
                 <span>195 zemí k objevení</span>
               </div>
               <Link
@@ -459,7 +451,7 @@ export default function Home() {
                     <h3 className="text-lg font-bold text-travel-600 border border-travel-300 rounded-lg px-3 py-1.5 inline-block">
                       {continent.name}
                     </h3>
-                    <FiMap className="w-6 h-6 text-travel-600 shrink-0" />
+                    <span className="w-6 h-6 text-travel-600 shrink-0"><FiMap /></span>
                   </div>
                 </div>
 
@@ -488,7 +480,7 @@ export default function Home() {
                     className="flex items-center justify-between text-travel-600 hover:text-travel-700 font-semibold text-sm border border-travel-300 rounded-lg px-3 py-2 bg-white hover:bg-travel-50 transition-all group"
                   >
                     <span>DALŠÍ ZEMĚ</span>
-                    <FiArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <span className="w-4 h-4 group-hover:translate-x-1 transition-transform"><FiArrowRight /></span>
                   </Link>
                 </div>
               </div>
@@ -523,9 +515,21 @@ export default function Home() {
                   </div>
                 </div>
               ))}
-            {!loadingArticles && articlePreview.length === 0 && (
+            {articlesError && (
+              <div className="col-span-full bg-white rounded-2xl border border-red-200 p-8 text-center">
+                <ErrorMessage error={articlesError} />
+                <Button
+                  type="button"
+                  onClick={() => loadArticles()}
+                  className="mt-4 cursor-pointer"
+                >
+                  Zkusit znovu
+                </Button>
+              </div>
+            )}
+            {!loadingArticles && !articlesError && articlePreview.length === 0 && (
               <div className="col-span-full bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center">
-                <FiBookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <span className="w-16 h-16 text-gray-400 mx-auto mb-4"><FiBookOpen /></span>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   Zatím žádné články
                 </h3>
@@ -540,7 +544,8 @@ export default function Home() {
               </div>
             )}
             {!loadingArticles &&
-              articlePreview.map((article) => (
+              !articlesError &&
+              articlePreview.map((article: Article) => (
                 <Link
                   key={article.id}
                   href={`/clanek/${article.slug}`}
@@ -557,7 +562,7 @@ export default function Home() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <FiCamera className="w-12 h-12 text-gray-400" />
+                          <span className="w-12 h-12 text-gray-400"><FiCamera /></span>
                         </div>
                       )}
                       <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-travel-600 flex items-center gap-1">
@@ -701,7 +706,7 @@ export default function Home() {
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 className="w-14 h-14 rounded-xl bg-travel-500 flex items-center justify-center text-white mb-4 shadow-lg transition-transform"
               >
-                <feature.icon className="w-7 h-7" />
+                <span className="w-7 h-7 flex items-center justify-center"><feature.icon /></span>
               </motion.div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">
                 {feature.title}

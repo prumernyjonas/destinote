@@ -14,55 +14,34 @@ export async function getCurrentUserId(): Promise<string> {
 }
 
 /**
- * Získá userId z různých zdrojů (query parametr, session, header)
- * Používá se v API endpointech, kde session nemusí být dostupná
+ * Získá userId výhradně z ověřené identity (session nebo Bearer token).
+ * Query parametr a header x-user-id se NEPOUŽÍVAJÍ jako zdroj identity (ochrana před IDOR).
  */
 export async function getUserIdFromRequest(
   req: NextRequest
 ): Promise<string | null> {
-  // 1. Zkusíme z query parametru
-  const { searchParams } = new URL(req.url);
-  const userIdFromQuery = searchParams.get("userId");
-  if (userIdFromQuery) return userIdFromQuery;
-
-  // 2. Zkusíme z headeru
-  const userIdFromHeader = req.headers.get("x-user-id");
-  if (userIdFromHeader) return userIdFromHeader;
-
-  // 3. Zkusíme ze session
+  // 1. Session (cookies)
   try {
     const supa = await createServerSupabaseClient();
     const { data: auth } = await supa.auth.getUser();
     if (auth.user?.id) return auth.user.id;
   } catch {}
 
-  // 4. Zkusíme z Bearer tokenu
+  // 2. Bearer token (např. mobilní klient)
   const authHeader =
     req.headers.get("authorization") || req.headers.get("Authorization");
-  console.log("[getUserIdFromRequest] authHeader present:", !!authHeader, "value:", authHeader ? `${authHeader.substring(0, 30)}...` : "null");
   const token =
     typeof authHeader === "string" &&
     authHeader.toLowerCase().startsWith("bearer ")
       ? authHeader.slice(7).trim()
       : null;
   if (token) {
-    console.log("[getUserIdFromRequest] found bearer token, length:", token.length, "first 20 chars:", token.substring(0, 20));
     try {
       const admin = createAdminSupabaseClient();
-      const { data: tokenUser, error: tokenError } = await admin.auth.getUser(token);
-      if (tokenError) {
-        console.error("[getUserIdFromRequest] Error getting user from token:", tokenError.message, tokenError.status);
-      } else if (tokenUser?.user?.id) {
-        console.log("[getUserIdFromRequest] ✓ resolved userId from bearer:", tokenUser.user.id);
-        return tokenUser.user.id;
-      } else {
-        console.warn("[getUserIdFromRequest] Token user not found");
-      }
-    } catch (e: any) {
-      console.error("[getUserIdFromRequest] Exception resolving token:", e?.message, e?.stack);
-    }
-  } else {
-    console.log("[getUserIdFromRequest] no bearer token in header or invalid format");
+      const { data: tokenUser, error: tokenError } =
+        await admin.auth.getUser(token);
+      if (!tokenError && tokenUser?.user?.id) return tokenUser.user.id;
+    } catch {}
   }
 
   return null;

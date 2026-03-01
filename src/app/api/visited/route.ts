@@ -1,25 +1,15 @@
-import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { getUserIdFromRequest } from "@/app/api/_utils/auth";
+import { createErrorResponse } from "@/app/api/_utils/errors";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const { data: auth } = await supabase.auth.getUser();
-    const sessionUserId = auth?.user?.id;
-    const url = new URL(req.url);
-    const qpUserId = url.searchParams.get("userId") || undefined;
-    const fallbackUserId =
-      req.headers.get("x-user-id") || qpUserId || undefined;
-    // Preferuj explicitně předaný userId (hlavička/param) před session
-    const userId = fallbackUserId || sessionUserId;
+    const userId = await getUserIdFromRequest(req);
     if (!userId) {
-      return NextResponse.json(
-        { ok: false, error: "Unauthorized" },
-        { status: 401 }
-      );
+      return createErrorResponse("Unauthorized", 401);
     }
 
     const admin = createAdminSupabaseClient();
@@ -28,10 +18,7 @@ export async function GET(req: Request) {
       .select("country_id, countries ( id, iso_code, name )")
       .eq("user_id", userId);
     if (error) {
-      return NextResponse.json(
-        { ok: false, error: error.message },
-        { status: 400 }
-      );
+      return createErrorResponse(error.message, 400);
     }
     const result: Array<{ iso2: string; name: string; id: string }> = [];
     for (const row of (data as any[]) || []) {
@@ -47,35 +34,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, data: result });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return createErrorResponse(message, 500);
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const { data: auth } = await supabase.auth.getUser();
-    const sessionUserId = auth?.user?.id;
-    const url = new URL(req.url);
-    const qpUserId = url.searchParams.get("userId") || undefined;
-    const fallbackUserId =
-      req.headers.get("x-user-id") || qpUserId || undefined;
-    // Preferuj explicitně předaný userId (hlavička/param) před session
-    const userId = fallbackUserId || sessionUserId;
+    const userId = await getUserIdFromRequest(req);
     if (!userId) {
-      return NextResponse.json(
-        { ok: false, error: "Unauthorized" },
-        { status: 401 }
-      );
+      return createErrorResponse("Unauthorized", 401);
     }
+    const url = new URL(req.url);
     const qpIso2 = url.searchParams.get("iso2");
     const payload = (await req.json().catch(() => ({}))) as { iso2?: string };
     const iso2 = ((qpIso2 || payload.iso2 || "") as string).toUpperCase();
     if (!iso2 || iso2.length !== 2) {
-      return NextResponse.json(
-        { ok: false, error: "Invalid iso2" },
-        { status: 400 }
-      );
+      return createErrorResponse("Invalid iso2", 400);
     }
 
     // Použijeme admin klienta kvůli možným RLS omezením při INSERT/SELECT
@@ -87,10 +61,7 @@ export async function POST(req: Request) {
       .eq("iso_code", iso2)
       .maybeSingle();
     if (countryErr) {
-      return NextResponse.json(
-        { ok: false, error: countryErr.message },
-        { status: 400 }
-      );
+      return createErrorResponse(countryErr.message, 400);
     }
     if (!country?.id) {
       // Speciální fix: pokud FR/NO v tabulce chybí, vytvoř je on-the-fly
@@ -103,10 +74,7 @@ export async function POST(req: Request) {
           .select("id, iso_code, name")
           .maybeSingle();
         if (insErr && (insErr as any).code !== "23505") {
-          return NextResponse.json(
-            { ok: false, error: insErr.message },
-            { status: 400 }
-          );
+          return createErrorResponse(insErr.message, 400);
         }
         // Po případném konfliktu zkusíme znovu načíst
         const retry = await admin
@@ -117,10 +85,7 @@ export async function POST(req: Request) {
         country = retry.data || inserted || null;
       }
       if (!country?.id) {
-        return NextResponse.json(
-          { ok: false, error: "Country not found" },
-          { status: 404 }
-        );
+        return createErrorResponse("Country not found", 404);
       }
     }
 
@@ -135,10 +100,7 @@ export async function POST(req: Request) {
         { onConflict: "user_id,country_id" }
       );
     if (upsertErr) {
-      return NextResponse.json(
-        { ok: false, error: upsertErr.message },
-        { status: 400 }
-      );
+      return createErrorResponse(upsertErr.message, 400);
     }
 
     // Recalculate and upsert aggregate count for the user
@@ -156,34 +118,25 @@ export async function POST(req: Request) {
         { onConflict: "user_id" }
       );
     } catch (e) {
-      // swallow aggregate update error to not fail the main request
-      console.warn("[visited:POST] aggregate update failed", e);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[visited:POST] aggregate update failed", e);
+      }
     }
 
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return createErrorResponse(message, 500);
   }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const { data: auth } = await supabase.auth.getUser();
-    const sessionUserId = auth?.user?.id;
-    const url = new URL(req.url);
-    const qpUserId = url.searchParams.get("userId") || undefined;
-    const fallbackUserId =
-      req.headers.get("x-user-id") || qpUserId || undefined;
-    // Preferuj explicitně předaný userId (hlavička/param) před session
-    const userId = fallbackUserId || sessionUserId;
+    const userId = await getUserIdFromRequest(req);
     if (!userId) {
-      return NextResponse.json(
-        { ok: false, error: "Unauthorized" },
-        { status: 401 }
-      );
+      return createErrorResponse("Unauthorized", 401);
     }
+    const url = new URL(req.url);
     const iso2Param = url.searchParams.get("iso2");
     let iso2 = (iso2Param || "").toUpperCase();
     if (!iso2) {
@@ -193,10 +146,7 @@ export async function DELETE(req: Request) {
       iso2 = (payload.iso2 || "").toUpperCase();
     }
     if (!iso2 || iso2.length !== 2) {
-      return NextResponse.json(
-        { ok: false, error: "Invalid iso2" },
-        { status: 400 }
-      );
+      return createErrorResponse("Invalid iso2", 400);
     }
 
     const admin = createAdminSupabaseClient();
@@ -206,10 +156,7 @@ export async function DELETE(req: Request) {
       .eq("iso_code", iso2)
       .maybeSingle();
     if (countryErr) {
-      return NextResponse.json(
-        { ok: false, error: countryErr.message },
-        { status: 400 }
-      );
+      return createErrorResponse(countryErr.message, 400);
     }
     if (!country?.id) {
       if (iso2 === "FR" || iso2 === "NO") {
@@ -221,10 +168,7 @@ export async function DELETE(req: Request) {
           .select("id")
           .maybeSingle();
         if (insErr && (insErr as any).code !== "23505") {
-          return NextResponse.json(
-            { ok: false, error: insErr.message },
-            { status: 400 }
-          );
+          return createErrorResponse(insErr.message, 400);
         }
         const retry = await admin
           .from("countries")
@@ -234,10 +178,7 @@ export async function DELETE(req: Request) {
         country = retry.data || inserted || null;
       }
       if (!country?.id) {
-        return NextResponse.json(
-          { ok: false, error: "Country not found" },
-          { status: 404 }
-        );
+        return createErrorResponse("Country not found", 404);
       }
     }
 
@@ -247,10 +188,7 @@ export async function DELETE(req: Request) {
       .eq("user_id", userId)
       .eq("country_id", country.id);
     if (delErr) {
-      return NextResponse.json(
-        { ok: false, error: delErr.message },
-        { status: 400 }
-      );
+      return createErrorResponse(delErr.message, 400);
     }
 
     // Recalculate and upsert aggregate count for the user
@@ -268,13 +206,14 @@ export async function DELETE(req: Request) {
         { onConflict: "user_id" }
       );
     } catch (e) {
-      // swallow aggregate update error to not fail the main request
-      console.warn("[visited:DELETE] aggregate update failed", e);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[visited:DELETE] aggregate update failed", e);
+      }
     }
 
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return createErrorResponse(message, 500);
   }
 }

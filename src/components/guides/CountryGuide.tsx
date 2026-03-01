@@ -1117,7 +1117,7 @@ export default async function CountryGuide({
           <Card className="rounded-xl border border-gray-200">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-xl">
-                <FiMap className="w-5 h-5 text-emerald-600" />
+                <span className="w-5 h-5 text-emerald-600"><FiMap /></span>
                 Poloha
               </CardTitle>
             </CardHeader>
@@ -1133,7 +1133,7 @@ export default async function CountryGuide({
             <Card className="rounded-xl border border-gray-200">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-2xl">
-                  <FiBookOpen className="w-6 h-6 text-emerald-600" />
+                  <span className="w-6 h-6 text-emerald-600"><FiBookOpen /></span>
                   Průvodce
                 </CardTitle>
               </CardHeader>
@@ -1161,7 +1161,7 @@ export default async function CountryGuide({
             <Card className="rounded-xl border border-gray-200">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-2xl">
-                  <FiBookOpen className="w-6 h-6 text-emerald-600" />
+                  <span className="w-6 h-6 text-emerald-600"><FiBookOpen /></span>
                   Průvodce
                 </CardTitle>
               </CardHeader>
@@ -1179,7 +1179,7 @@ export default async function CountryGuide({
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-2xl">
-                    <FiCamera className="w-6 h-6 text-emerald-600" />
+                    <span className="w-6 h-6 text-emerald-600"><FiCamera /></span>
                     Cestopisy a články
                   </CardTitle>
                   <Link
@@ -1211,7 +1211,7 @@ export default async function CountryGuide({
                           </div>
                         ) : (
                           <div className="relative w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-                            <FiCamera className="w-8 h-8 text-gray-400" />
+                            <span className="w-8 h-8 text-gray-400"><FiCamera /></span>
                           </div>
                         )}
                         <div className="p-4 flex-1 flex flex-col">
@@ -1334,7 +1334,7 @@ export default async function CountryGuide({
           <Card className="rounded-xl border border-gray-200">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-base">
-                <FiTrendingUp className="w-5 h-5 text-emerald-600" />
+                <span className="w-5 h-5 text-emerald-600"><FiTrendingUp /></span>
                 Statistiky
               </CardTitle>
             </CardHeader>
@@ -1359,7 +1359,7 @@ export default async function CountryGuide({
             <Card className="rounded-xl border border-gray-200">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <FiCamera className="w-5 h-5 text-emerald-600" />
+                  <span className="w-5 h-5 text-emerald-600"><FiCamera /></span>
                   Cestopisy a články
                 </CardTitle>
               </CardHeader>
@@ -1384,7 +1384,7 @@ export default async function CountryGuide({
                           </div>
                         ) : (
                           <div className="relative w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <FiCamera className="w-5 h-5 text-gray-400" />
+                            <span className="w-5 h-5 text-gray-400"><FiCamera /></span>
                           </div>
                         )}
                         <div className="flex-1 min-w-0">

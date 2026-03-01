@@ -282,16 +282,18 @@ export async function DELETE(req: NextRequest) {
     // Smazat avatar z Cloudinary
     // Najít všechny avatary pro tohoto uživatele (hledat podle public_id pattern)
     try {
-      let cloudName: string;
-      let apiKey: string;
-      let apiSecret: string;
+      let cloudName: string | undefined;
+      let apiKey: string | undefined;
+      let apiSecret: string | undefined;
       try {
         cloudName = getEnv("CLOUDINARY_CLOUD_NAME");
         apiKey = getEnv("CLOUDINARY_API_KEY");
         apiSecret = getEnv("CLOUDINARY_API_SECRET");
-      } catch (envErr: any) {
-        console.error("[avatar DELETE] Missing Cloudinary env vars:", envErr.message);
-        // Pokračujeme dál, i když nemůžeme smazat z Cloudinary
+      } catch (envErr: unknown) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[avatar DELETE] Missing Cloudinary env vars:", (envErr as Error)?.message);
+        }
+        cloudName = apiKey = apiSecret = undefined;
       }
 
       if (cloudName && apiKey && apiSecret) {
@@ -304,10 +306,8 @@ export async function DELETE(req: NextRequest) {
         };
         const signature = signParams(paramsToSign, apiSecret);
 
-        // Poznámka: Cloudinary API nepodporuje mazání podle prefixu přímo
-        // Museli bychom použít Admin API pro listování a pak mazání
-        // Pro jednoduchost necháme staré avatary v Cloudinary (nejsou veřejně přístupné bez URL)
-        console.log("[avatar DELETE] Cloudinary cleanup skipped (would need Admin API)");
+        // Poznámka: Cloudinary API nepodporuje mazání podle prefixu přímo.
+        // Pro jednoduchost necháme staré avatary v Cloudinary.
       }
     } catch (cloudinaryErr: any) {
       console.error("[avatar DELETE] Cloudinary cleanup error:", cloudinaryErr);

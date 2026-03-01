@@ -18,7 +18,7 @@ export default function ForgotPasswordPage() {
   const toast = useToast();
 
   // Shared input class for consistency
-  const inputClass = "appearance-none block w-full px-4 py-2.5 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white transition-colors";
+  const inputClass = "appearance-none block w-full px-4 py-3 bg-white/7 border border-white/10 rounded-xl text-white placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-travel-300/40 focus:border-travel-300/40 sm:text-sm backdrop-blur-sm transition-all duration-200";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,7 +147,7 @@ export default function ForgotPasswordPage() {
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-1.5"
+              className="block text-sm font-medium text-white/70 mb-1.5"
             >
               Email
             </label>
@@ -182,7 +182,7 @@ export default function ForgotPasswordPage() {
           <div className="text-center">
             <Link
               href="/prihlaseni"
-              className="text-sm font-medium text-green-600 hover:text-green-500 transition-colors"
+              className="text-sm font-medium text-travel-100 hover:text-white transition-colors"
             >
               Zpět na přihlášení
             </Link>

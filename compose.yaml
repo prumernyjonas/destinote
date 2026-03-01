@@ -12,11 +12,14 @@ services:
     image: prumernyjonas/destinote-test-server:latest
     build:
       context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
     env_file:
       - .env.local
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL}
     ports:
       - "3000:3000"
 # The commented out section below is an example of how to define a PostgreSQL

@@ -1,10 +1,7 @@
 # syntax=docker/dockerfile:1
-
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Dockerfile reference guide at
 # https://docs.docker.com/go/dockerfile-reference/
 
-ARG NODE_VERSION=22.15.1
+ARG NODE_VERSION=22.22.0
 
 ################################################################################
 # Use node image for base image for all stages.
@@ -29,6 +26,15 @@ RUN --mount=type=bind,source=package.json,target=package.json \
 ################################################################################
 # Create a stage for building the application.
 FROM base as build
+
+# Build-time env (NEXT_PUBLIC_* jsou v Next.js vloženy do bundlu při buildi).
+# Předávají se přes: docker compose --env-file .env.local up --build
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 
 # Download all dependencies (including devDependencies) before building.
 RUN --mount=type=bind,source=package.json,target=package.json \

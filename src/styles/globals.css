@@ -198,5 +198,26 @@ body {
       transform: translateX(0);
     }
   }
+}
 
+@keyframes auth-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.1); }
+}
+
+@keyframes auth-fade-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[auth-glow_8s_ease-in-out_infinite\],
+  .animate-\[auth-glow_11s_ease-in-out_infinite_3s\],
+  .animate-\[auth-glow_14s_ease-in-out_infinite_6s\] {
+    animation: none;
+  }
+
+  .animate-\[auth-fade-in_0\.5s_ease-out\] {
+    animation: none;
+  }
 }
