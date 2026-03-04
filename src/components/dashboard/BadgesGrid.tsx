@@ -80,14 +80,14 @@ export function BadgesGrid({ badges, compact = true }: BadgesGridProps) {
         {/* Modal s detailem odznaku */}
         {selectedBadge && (
           <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 cursor-pointer"
             onClick={() => setSelectedBadge(null)}
             role="dialog"
             aria-modal="true"
             aria-labelledby="badge-modal-title"
           >
             <div
-              className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-sm w-full p-6"
+              className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-sm w-full p-6 cursor-default"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex flex-col items-center text-center">
@@ -141,7 +141,7 @@ export function BadgesGrid({ badges, compact = true }: BadgesGridProps) {
               <button
                 type="button"
                 onClick={() => setSelectedBadge(null)}
-                className="mt-4 w-full py-2 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl hover:bg-slate-50"
+                className="mt-4 w-full py-2 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer"
               >
                 Zavřít
               </button>

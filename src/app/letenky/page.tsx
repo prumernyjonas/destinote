@@ -30,7 +30,6 @@ export default function FlightsPage() {
   useEffect(() => {
     const container = document.getElementById("travelpayouts-widget");
     if (!container) {
-      console.error("Kontejner travelpayouts-widget nenalezen");
       return;
     }
 
@@ -78,7 +77,6 @@ export default function FlightsPage() {
       "travelpayouts-widget-extra"
     );
     if (!extraContainer) {
-      console.error("Kontejner travelpayouts-widget-extra nenalezen");
       return;
     }
 
@@ -171,6 +169,8 @@ export default function FlightsPage() {
       }
     };
   }, [extraWidgetUrl]);
+
+  const loading = loadingWidget || loadingMap;
 
   return (
     <>

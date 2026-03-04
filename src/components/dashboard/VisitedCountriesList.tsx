@@ -28,7 +28,7 @@ export function VisitedCountriesList({
             <button
               type="button"
               onClick={() => onRemove(c.iso2)}
-              className="text-gray-500 hover:text-red-600 focus:outline-none"
+              className="text-gray-500 hover:text-red-600 focus:outline-none cursor-pointer"
               aria-label={`Odebrat ${c.name}`}
               title={`Odebrat ${c.name}`}
             >

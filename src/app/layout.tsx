@@ -7,6 +7,8 @@ import Navbar from "@/components/layout/Navbar";
 import { Suspense } from "react";
 import { marble } from "@/lib/fonts";
 import { PageLoading } from "@/components/ui/PageLoading";
+import { ContentLoadingFallback } from "@/components/ui/ContentLoadingFallback";
+import { AuthLoadingGate } from "@/components/layout/AuthLoadingGate";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,12 +48,14 @@ export default function RootLayout({
       >
         <ToastProvider>
           <AuthProvider>
-            <Suspense fallback={<PageLoading />}>
-              <Navbar />
-            </Suspense>
-            <Suspense fallback={<PageLoading message="Načítám stránku…" />}>
-              {children}
-            </Suspense>
+            <AuthLoadingGate>
+              <Suspense fallback={<PageLoading />}>
+                <Navbar />
+              </Suspense>
+              <Suspense fallback={<ContentLoadingFallback />}>
+                {children}
+              </Suspense>
+            </AuthLoadingGate>
           </AuthProvider>
         </ToastProvider>
       </body>

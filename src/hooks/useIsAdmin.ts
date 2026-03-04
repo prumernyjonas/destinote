@@ -10,34 +10,17 @@ export function useIsAdmin() {
   async function load() {
     try {
       setLoading(true);
-      
-      // Získáme userId z localStorage (stejně jako ClientAdminGate)
-      let userId: string | null = null;
-      try {
-        const keys = Object.keys(localStorage);
-        for (const key of keys) {
-          if (key.includes("supabase") || key.includes("auth")) {
-            try {
-              const value = localStorage.getItem(key);
-              if (value) {
-                const parsed = JSON.parse(value);
-                if (parsed?.user?.id) {
-                  userId = parsed.user.id;
-                  break;
-                }
-              }
-            } catch {}
-          }
-        }
-      } catch {}
 
-      // Sestavíme URL s userId jako query parametr (stejně jako ClientAdminGate)
-      const apiUrl = userId
-        ? `/api/auth/role?userId=${encodeURIComponent(userId)}`
-        : "/api/auth/role";
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: HeadersInit = session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {};
 
-      const res = await fetch(apiUrl, {
+      const res = await fetch("/api/auth/role", {
         cache: "no-store",
+        headers,
       });
 
       if (!res.ok) {

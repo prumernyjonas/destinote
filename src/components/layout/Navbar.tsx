@@ -22,7 +22,9 @@ import {
   FiUsers,
   FiX,
 } from "react-icons/fi";
-import NotificationDropdown, { fetchUnreadCount } from "@/components/notifications/NotificationDropdown";
+import NotificationDropdown, {
+  fetchUnreadCount,
+} from "@/components/notifications/NotificationDropdown";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { supabase } from "@/lib/supabase/client";
@@ -60,6 +62,9 @@ export default function Navbar() {
   const [loggingOut, setLoggingOut] = useState(false);
   const [authLoadingTimeout, setAuthLoadingTimeout] = useState(false);
   const { isAdmin } = useIsAdmin();
+  const [searchBarOpen, setSearchBarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   // Použít cached user jako fallback, pokud authLoading je true
   const [cachedUser, setCachedUser] = useState(() => {
@@ -284,6 +289,33 @@ export default function Navbar() {
     };
   }, [mobileMenuOpen]);
 
+  // Focus search input when bar opens; close on Escape
+  useEffect(() => {
+    if (searchBarOpen) {
+      searchInputRef.current?.focus();
+    }
+  }, [searchBarOpen]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSearchBarOpen(false);
+    };
+    if (searchBarOpen) {
+      document.addEventListener("keydown", onKeyDown);
+      return () => document.removeEventListener("keydown", onKeyDown);
+    }
+  }, [searchBarOpen]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (q.length >= 2) {
+      router.push(`/hledat?q=${encodeURIComponent(q)}`);
+      setSearchBarOpen(false);
+      setSearchQuery("");
+    }
+  };
+
   const isCommunity = pathname === "/komunita";
   const isCountries = pathname === "/zeme" || pathname.startsWith("/zeme/");
   const navItems = [
@@ -394,7 +426,7 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="bg-[#cbe1f7] border-b">
+      <header className="bg-[#cbe1f7] border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             {/* Left: Logo */}
@@ -438,56 +470,65 @@ export default function Navbar() {
                   onMouseEnter={() => setCountriesOpen(true)}
                   onFocus={() => setCountriesOpen(true)}
                   onTouchStart={() => setCountriesOpen(true)}
-                  onClick={() => {
-                    setCountriesOpen(false);
-                  }}
-                  className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
+                  onClick={() => setCountriesOpen(false)}
+                  className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full transition cursor-pointer ${
                     isCountries ? "bg-white/60" : "hover:bg-white/60"
                   } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
                 >
-                  Země
+                  <span>Země</span>
+                  <FiChevronDown
+                    aria-hidden
+                    className={`w-4 h-4 text-blue-900 transition-transform duration-200 ${
+                      countriesOpen ? "rotate-180" : ""
+                    }`}
+                  />
                 </Link>
                 {countriesOpen && (
                   <div
-                    className="absolute mt-7 left-1/2 -translate-x-1/2 w-auto max-w-[95vw] bg-white shadow-xl border rounded-lg p-5 flex gap-6 z-50"
+                    className="absolute mt-2 left-1/2 -translate-x-1/2 w-[min(96vw,42rem)] max-h-[min(70vh,28rem)] overflow-y-auto bg-slate-100 shadow-lg border border-slate-200 rounded-lg p-5 z-50"
                     onMouseLeave={() => setCountriesOpen(false)}
                   >
-                    {countriesData.map((col) => (
-                      <div key={col.title} className="shrink-0 min-w-37.5">
-                        <div className="font-semibold text-gray-900 mb-2.5 text-base">
-                          {col.title}
-                        </div>
-                        <ul className="space-y-1.5 text-gray-700 text-sm">
-                          {col.items.map((i) => (
-                            <li key={i.slug}>
-                              <Link
-                                href={`/zeme/${
-                                  (i as any).continent || col.continentSlug
-                                }/${i.slug}`}
-                                className="hover:text-green-700 cursor-pointer block"
-                                onClick={() => setCountriesOpen(false)}
-                              >
-                                {i.name}
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                        <Link
-                          href={`/zeme/${col.continentSlug}`}
-                          className="inline-flex items-center text-sm text-gray-600 mt-3 hover:text-gray-900"
-                          onClick={() => setCountriesOpen(false)}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-0 items-stretch">
+                      {countriesData.map((col) => (
+                        <div
+                          key={col.title}
+                          className="min-w-0 flex flex-col"
                         >
-                          → Všechny země
-                        </Link>
-                      </div>
-                    ))}
+                          <div className="font-bold text-gray-900 mb-3 text-sm shrink-0">
+                            {col.title}
+                          </div>
+                          <ul className="space-y-1.5 text-gray-800 text-sm flex-1 min-h-[7.5rem]">
+                            {col.items.map((i) => (
+                              <li key={i.slug}>
+                                <Link
+                                  href={`/zeme/${
+                                    (i as any).continent || col.continentSlug
+                                  }/${i.slug}`}
+                                  className="block py-0.5 rounded hover:text-green-700 hover:bg-slate-200/60 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-inset cursor-pointer"
+                                  onClick={() => setCountriesOpen(false)}
+                                >
+                                  {i.name}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                          <Link
+                            href={`/zeme/${col.continentSlug}`}
+                            className="inline-block text-sm text-gray-700 mt-3 shrink-0 hover:text-gray-900 hover:underline cursor-pointer"
+                            onClick={() => setCountriesOpen(false)}
+                          >
+                            → Všechny země
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
 
               <Link
                 href="/komunita"
-                className={`px-3 py-1.5 rounded-full transition ${
+                className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
                   isCommunity ? "bg-white/60" : "hover:bg-white/60"
                 } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
               >
@@ -496,7 +537,7 @@ export default function Navbar() {
 
               <Link
                 href="/letenky"
-                className={`px-3 py-1.5 rounded-full transition ${
+                className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
                   pathname === "/letenky" ? "bg-white/60" : "hover:bg-white/60"
                 } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
               >
@@ -505,7 +546,7 @@ export default function Navbar() {
 
               <Link
                 href="/zebricek"
-                className={`px-3 py-1.5 rounded-full transition ${
+                className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
                   pathname === "/leaderboard"
                     ? "bg-white/60"
                     : "hover:bg-white/60"
@@ -517,21 +558,25 @@ export default function Navbar() {
 
             {/* Right: Search Icon + Notifications + Auth (Desktop) + Mobile Menu Button */}
             <div className="flex items-center gap-3">
-              {/* Search Icon - Desktop only */}
-              <Link
-                href="/hledat"
-                className="hidden md:flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-                aria-label="Vyhledávání"
+              {/* Search Icon – otevře search bar pod navbarem, nepřesměruje na /hledat */}
+              <button
+                type="button"
+                onClick={() => setSearchBarOpen((v) => !v)}
+                className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-pointer"
+                aria-label={searchBarOpen ? "Zavřít vyhledávání" : "Vyhledávání"}
               >
                 <FiSearch className="w-5 h-5 text-blue-900" />
-              </Link>
+              </button>
 
               {/* Notification Bell - Desktop, logged in only */}
               {mounted && displayUser && (
-                <div className="hidden md:block relative" ref={notificationsRef}>
+                <div
+                  className="hidden md:block relative"
+                  ref={notificationsRef}
+                >
                   <button
                     onClick={() => setNotificationsOpen((v) => !v)}
-                    className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    className="relative flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-pointer"
                     aria-label="Oznámení"
                   >
                     <FiBell className="w-5 h-5 text-blue-900" />
@@ -553,7 +598,7 @@ export default function Navbar() {
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setMobileMenuOpen(true)}
-                className="md:hidden p-2 rounded-lg hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                className="md:hidden p-2 rounded-lg hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-pointer"
                 aria-label="Otevřít menu"
               >
                 <FiMenu className="w-6 h-6 text-blue-900" />
@@ -722,6 +767,44 @@ export default function Navbar() {
         </div>
       </header>
 
+      {/* Search bar – stejný blok jako na /hledat (šířka, výška, styly) */}
+      {searchBarOpen && (
+        <div className="sticky top-20 z-40 bg-white border-b border-gray-200 py-4 shadow-sm">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="mb-0">
+              <form onSubmit={handleSearchSubmit} className="relative">
+                <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-blue-600" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Hledat země, články..."
+                  className="w-full pl-12 pr-32 py-4 bg-white border-2 border-blue-200 rounded-full text-lg text-blue-900 placeholder-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  aria-label="Vyhledávací dotaz"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-32 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition cursor-pointer"
+                    aria-label="Vymazat vyhledávání"
+                  >
+                    <FiX className="w-5 h-5" />
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2 bg-blue-700 text-white rounded-full hover:bg-blue-800 transition cursor-pointer"
+                >
+                  Hledat
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
@@ -746,7 +829,7 @@ export default function Navbar() {
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-2 rounded-lg hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                className="p-2 rounded-lg hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-pointer"
                 aria-label="Zavřít menu"
               >
                 <FiX className="w-6 h-6 text-blue-900" />
@@ -759,7 +842,7 @@ export default function Navbar() {
                 <Link
                   href="/"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition ${
+                  className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition cursor-pointer ${
                     pathname === "/" ? "bg-white/60 font-semibold" : ""
                   }`}
                 >
@@ -770,7 +853,7 @@ export default function Navbar() {
                 <Link
                   href="/zeme"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition ${
+                  className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition cursor-pointer ${
                     pathname === "/zeme" && !pathname.startsWith("/zeme/")
                       ? "bg-white/60 font-semibold"
                       : ""
@@ -783,58 +866,61 @@ export default function Navbar() {
                 <div className="border-b border-blue-200">
                   <button
                     onClick={() => setMobileCountriesOpen(!mobileCountriesOpen)}
-                    className={`w-full flex items-center justify-between px-6 py-5 text-blue-900 text-lg hover:bg-white/40 transition ${
+                    className={`w-full flex items-center justify-between px-6 py-5 text-blue-900 text-lg hover:bg-white/40 transition cursor-pointer ${
                       isCountries ? "bg-white/60 font-semibold" : ""
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <FiMap className="w-5 h-5" />
+                      <FiMap className="w-5 h-5 shrink-0" />
                       <span>Země</span>
                     </div>
                     <FiChevronDown
-                      className={`w-5 h-5 transition-transform ${
+                      aria-hidden
+                      className={`w-5 h-5 shrink-0 transition-transform duration-200 ${
                         mobileCountriesOpen ? "rotate-180" : ""
                       }`}
                     />
                   </button>
                   {mobileCountriesOpen && (
-                    <div className="bg-white/30 border-t border-blue-200">
-                      <div className="px-6 py-4 space-y-2 max-h-[60vh] overflow-y-auto">
-                        {countriesData.map((col) => (
-                          <div key={col.title} className="mb-4">
-                            <div className="font-semibold text-blue-900 mb-2 text-sm">
-                              {col.title}
+                    <div className="bg-white/40 border-t border-blue-200">
+                      <div className="px-4 py-4 max-h-[65vh] overflow-y-auto">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+                          {countriesData.map((col) => (
+                            <div key={col.title} className="min-w-0">
+                              <div className="font-semibold text-blue-900 mb-2 text-sm">
+                                {col.title}
+                              </div>
+                              <ul className="space-y-0.5">
+                                {col.items.map((i) => (
+                                  <li key={i.slug}>
+                                    <Link
+                                      href={`/zeme/${
+                                        (i as any).continent || col.continentSlug
+                                      }/${i.slug}`}
+                                      onClick={() => {
+                                        setMobileMenuOpen(false);
+                                        setMobileCountriesOpen(false);
+                                      }}
+                                      className="block text-sm text-blue-800 hover:text-green-700 py-1.5 px-2 -mx-2 rounded hover:bg-white/50 cursor-pointer"
+                                    >
+                                      {i.name}
+                                    </Link>
+                                  </li>
+                                ))}
+                              </ul>
+                              <Link
+                                href={`/zeme/${col.continentSlug}`}
+                                onClick={() => {
+                                  setMobileMenuOpen(false);
+                                  setMobileCountriesOpen(false);
+                                }}
+                                className="inline-block text-xs font-medium text-blue-600 mt-1.5 px-2 -mx-2 py-1 rounded hover:bg-white/50 hover:text-blue-800 cursor-pointer"
+                              >
+                                Všechny země →
+                              </Link>
                             </div>
-                            <ul className="space-y-1.5">
-                              {col.items.map((i) => (
-                                <li key={i.slug}>
-                                  <Link
-                                    href={`/zeme/${
-                                      (i as any).continent || col.continentSlug
-                                    }/${i.slug}`}
-                                    onClick={() => {
-                                      setMobileMenuOpen(false);
-                                      setMobileCountriesOpen(false);
-                                    }}
-                                    className="block text-sm text-blue-800 hover:text-green-700 py-1"
-                                  >
-                                    {i.name}
-                                  </Link>
-                                </li>
-                              ))}
-                            </ul>
-                            <Link
-                              href={`/zeme/${col.continentSlug}`}
-                              onClick={() => {
-                                setMobileMenuOpen(false);
-                                setMobileCountriesOpen(false);
-                              }}
-                              className="inline-flex items-center text-xs text-blue-600 mt-2 hover:text-blue-900"
-                            >
-                              → Všechny země
-                            </Link>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -843,7 +929,7 @@ export default function Navbar() {
                 <Link
                   href="/komunita"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition ${
+                  className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition cursor-pointer ${
                     isCommunity ? "bg-white/60 font-semibold" : ""
                   }`}
                 >
@@ -854,7 +940,7 @@ export default function Navbar() {
                 <Link
                   href="/letenky"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition ${
+                  className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition cursor-pointer ${
                     pathname === "/flights" ? "bg-white/60 font-semibold" : ""
                   }`}
                 >
@@ -865,7 +951,7 @@ export default function Navbar() {
                 <Link
                   href="/zebricek"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition ${
+                  className={`flex items-center gap-3 px-6 py-5 text-blue-900 text-lg border-b border-blue-200 hover:bg-white/40 transition cursor-pointer ${
                     pathname === "/zebricek" ? "bg-white/60 font-semibold" : ""
                   }`}
                 >
@@ -880,7 +966,7 @@ export default function Navbar() {
               <div className="border-t border-blue-900 bg-blue-900 ">
                 <button
                   onClick={() => setMobileUserMenuOpen(!mobileUserMenuOpen)}
-                  className="w-full px-6 py-5 flex items-center gap-3 hover:bg-white/10 transition"
+                  className="w-full px-6 py-5 flex items-center gap-3 hover:bg-white/10 transition cursor-pointer"
                 >
                   {displayUser.photoURL &&
                   displayUser.photoURL.trim() !== "" ? (
@@ -1035,7 +1121,7 @@ export default function Navbar() {
                     setMobileMenuOpen(false);
                     router.push("/prihlaseni");
                   }}
-                  className="w-full px-6 py-3 rounded-full bg-green-700 text-white text-base hover:bg-green-800 active:bg-green-900 transition"
+                  className="w-full px-6 py-3 rounded-full bg-green-700 text-white text-base hover:bg-green-800 active:bg-green-900 transition cursor-pointer"
                 >
                   Přihlásit se
                 </button>

@@ -44,7 +44,7 @@ export default function AvatarLightbox({ imageUrl, alt, isOpen, onClose }: Props
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm cursor-pointer"
       onClick={onClose}
     >
       {/* Close button */}
@@ -58,7 +58,7 @@ export default function AvatarLightbox({ imageUrl, alt, isOpen, onClose }: Props
 
       {/* Image container */}
       <div
-        className="relative p-4"
+        className="relative p-4 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-96 h-96 max-w-[80vw] max-h-[80vh] rounded-full overflow-hidden shadow-2xl border-4 border-white/20">

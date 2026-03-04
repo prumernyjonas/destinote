@@ -198,9 +198,9 @@ export default function Home() {
   const articlePreview = useMemo(() => articles.slice(0, 3), [articles]);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Globe Hero Section */}
-      <section className="relative overflow-hidden bg-linear-to-b from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen">
+      {/* ═══ Hero: tmavě modrý gradient ═══ */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
         {/* Světelné efekty na pozadí */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl" />
@@ -290,14 +290,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How It Works Section */}
+      {/* ═══ Jak to funguje: světlá sekce ═══ */}
       <motion.section
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.6 }}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
+        className="bg-slate-100 py-16"
       >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -359,24 +360,30 @@ export default function Home() {
             </motion.div>
           ))}
         </div>
+        </div>
       </motion.section>
 
-      {/* World Map Section */}
+      {/* ═══ Mapa světa: tmavě modrý gradient ═══ */}
       <motion.section
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.6 }}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
+        className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-16"
       >
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/4 right-0 w-80 h-80 bg-blue-500/15 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 left-0 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="bg-white rounded-2xl border border-gray-200/70 shadow-sm overflow-hidden"
+          className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 shadow-xl overflow-hidden"
         >
-          <div className="bg-travel-600 px-6 sm:px-8 py-5">
+          <div className="bg-travel-600/90 px-6 sm:px-8 py-5">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">
@@ -394,31 +401,33 @@ export default function Home() {
           <div className="h-95 sm:h-105 lg:h-125 bg-travel-50">
             <PublicWorldMap />
           </div>
-          <div className="px-6 sm:px-8 py-5 bg-gray-50 border-t border-gray-200">
+          <div className="px-6 sm:px-8 py-5 bg-slate-800/50 border-t border-white/10">
             <div className="flex flex-wrap items-center gap-4 text-sm">
-              <div className="flex items-center gap-2 font-semibold text-gray-700">
-                <span className="text-travel-600"><FiFlag /></span>
+              <div className="flex items-center gap-2 font-semibold text-slate-200">
+                <span className="text-travel-300"><FiFlag /></span>
                 <span>195 zemí k objevení</span>
               </div>
               <Link
                 href="/zeme"
-                className="ml-auto inline-flex items-center gap-2 text-travel-600 font-semibold hover:text-travel-700 transition-colors"
+                className="ml-auto inline-flex items-center gap-2 text-travel-300 font-semibold hover:text-travel-200 transition-colors"
               >
                 Otevřít všechny země <FiArrowRight />
               </Link>
             </div>
           </div>
         </motion.div>
+        </div>
       </motion.section>
 
-      {/* Continents Grid */}
+      {/* ═══ Kontinenty: světlá sekce ═══ */}
       <motion.section
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.6 }}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
+        className="bg-white py-16"
       >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -487,17 +496,22 @@ export default function Home() {
             </motion.div>
           ))}
         </div>
+        </div>
       </motion.section>
 
-      {/* Features & Community */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      {/* ═══ Nejnovější z komunity: tmavě modrý gradient ═══ */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-16">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Community Articles */}
         <div className="space-y-6 text-center">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            <h2 className="text-3xl font-bold text-white mb-2">
               Nejnovější z komunity
             </h2>
-            <p className="text-gray-600">
+            <p className="text-slate-300">
               Inspirujte se cestopisy od ostatních cestovatelů
             </p>
           </div>
@@ -506,38 +520,38 @@ export default function Home() {
               [...Array(3)].map((_, i) => (
                 <div
                   key={i}
-                  className="bg-white rounded-2xl border border-gray-200/70 shadow-sm overflow-hidden"
+                  className="bg-white/5 rounded-2xl border border-white/10 shadow-sm overflow-hidden animate-pulse"
                 >
-                  <div className="h-48 bg-linear-to-br from-gray-200 to-gray-300 animate-pulse" />
+                  <div className="h-48 bg-slate-700/50 rounded-t-2xl" />
                   <div className="p-5 space-y-3">
-                    <div className="h-4 w-24 bg-gray-200 animate-pulse rounded" />
-                    <div className="h-6 w-3/4 bg-gray-200 animate-pulse rounded" />
+                    <div className="h-4 w-24 bg-slate-600/50 rounded" />
+                    <div className="h-6 w-3/4 bg-slate-600/50 rounded" />
                   </div>
                 </div>
               ))}
             {articlesError && (
-              <div className="col-span-full bg-white rounded-2xl border border-red-200 p-8 text-center">
-                <ErrorMessage error={articlesError} />
+              <div className="col-span-full bg-white/10 rounded-2xl border border-red-400/30 p-8 text-center">
+                <ErrorMessage error={articlesError} className="text-red-200" />
                 <Button
                   type="button"
                   onClick={() => loadArticles()}
-                  className="mt-4 cursor-pointer"
+                  className="mt-4 cursor-pointer bg-white text-slate-900 hover:bg-slate-100"
                 >
                   Zkusit znovu
                 </Button>
               </div>
             )}
             {!loadingArticles && !articlesError && articlePreview.length === 0 && (
-              <div className="col-span-full bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center">
-                <span className="w-16 h-16 text-gray-400 mx-auto mb-4"><FiBookOpen /></span>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              <div className="col-span-full bg-white/5 rounded-2xl border border-dashed border-white/20 p-12 text-center">
+                <span className="w-16 h-16 text-slate-400 mx-auto mb-4"><FiBookOpen /></span>
+                <h3 className="text-xl font-semibold text-white mb-2">
                   Zatím žádné články
                 </h3>
-                <p className="text-gray-600 mb-6">
+                <p className="text-slate-400 mb-6">
                   Buďte první a podělte se o svůj příběh z cest
                 </p>
                 <Link href="/clanek/novy">
-                  <Button className="bg-travel-600 hover:bg-travel-700 text-white">
+                  <Button className="bg-white text-slate-900 hover:bg-slate-100">
                     Přidat článek
                   </Button>
                 </Link>
@@ -551,8 +565,8 @@ export default function Home() {
                   href={`/clanek/${article.slug}`}
                   className="group block"
                 >
-                  <div className="bg-white rounded-2xl border border-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden h-full">
-                    <div className="relative h-48 bg-travel-50 overflow-hidden">
+                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 hover:border-white/20 hover:bg-white/10 shadow-lg transition-all duration-200 overflow-hidden h-full">
+                    <div className="relative h-48 bg-slate-800/50 overflow-hidden">
                       {article.main_image_url ? (
                         <img
                           src={article.main_image_url}
@@ -562,16 +576,16 @@ export default function Home() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <span className="w-12 h-12 text-gray-400"><FiCamera /></span>
+                          <span className="w-12 h-12 text-slate-500"><FiCamera /></span>
                         </div>
                       )}
-                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-travel-600 flex items-center gap-1">
+                      <div className="absolute top-4 left-4 bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-semibold text-slate-200 flex items-center gap-1">
                         <FiUsers />
                         Komunita
                       </div>
                     </div>
                     <div className="p-5">
-                      <div className="text-xs text-gray-500 mb-2">
+                      <div className="text-xs text-slate-500 mb-2">
                         {article.published_at
                           ? new Date(article.published_at).toLocaleDateString(
                               "cs-CZ",
@@ -580,7 +594,7 @@ export default function Home() {
                               "cs-CZ",
                             )}
                       </div>
-                      <h3 className="text-lg font-bold text-gray-900 line-clamp-2 group-hover:text-travel-600 transition-colors">
+                      <h3 className="text-lg font-bold text-white line-clamp-2 group-hover:text-travel-200 transition-colors">
                         {article.title}
                       </h3>
                     </div>
@@ -591,92 +605,24 @@ export default function Home() {
           <Link href="/komunita">
             <Button
               variant="outline"
-              className="border border-blue-900 hover:border-blue-900 hover:bg-blue-50 focus:border-blue-900 focus:ring-blue-900 text-blue-900 hover:text-blue-900 focus:text-blue-900 font-semibold cursor-pointer"
+              className="border border-white/40 text-white hover:bg-white/10 hover:border-white/60 font-semibold cursor-pointer"
             >
               Zobrazit všechny články
             </Button>
           </Link>
         </div>
+        </div>
       </section>
 
-      {/* 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="space-y-6"> */}
-      {/* Leaderboard */}
-      {/* <Card className="border border-gray-200/70 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
-              <CardHeader className="bg-travel-600 text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2">
-                  <FiAward />
-                  Žebříček
-                </CardTitle>
-                <CardDescription className="text-amber-100">
-                  Top 3 cestovatelé
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3">
-                {leaderboardPreview.map((user, idx) => (
-                  <div
-                    key={user.name}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-200 hover:border-travel-300 transition-colors"
-                  >
-                    <div
-                      className={`w-12 h-12 rounded-xl ${avatarColor(
-                        user.name
-                      )} flex items-center justify-center text-white font-bold text-lg shadow-md`}
-                    >
-                      {user.name.charAt(0)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold text-gray-500">
-                          #{user.rank}
-                        </span>
-                        <span className="text-xl">
-                          {idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}
-                        </span>
-                      </div>
-                      <div className="font-bold text-gray-900">{user.name}</div>
-                      <div className="text-xs text-gray-600">
-                        {user.countries} zemí •{" "}
-                        {user.score.toLocaleString("cs-CZ")} b
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <Link href="/zebricek">
-                  <Button
-                    variant="outline"
-                    className="w-full border border-gray-300 hover:border-travel-500 hover:text-travel-600 font-semibold"
-                  >
-                    Celý žebříček
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card> */}
-
-      {/* Flights */}
-      {/* <div className="space-y-4">
-              <FlightsWidget origin="PRG" limit={6} showTitle={true} />
-              <Link href="/letenky">
-                <Button
-                  variant="outline"
-                  className="w-full border border-gray-300 hover:border-travel-500 hover:text-travel-600 font-semibold"
-                >
-                  Více destinací
-                </Button>
-              </Link>
-            </div> */}
-      {/* </div> */}
-      {/* </section> */}
-
-      {/* Features Grid */}
+      {/* ═══ Vše co potřebujete: světlá sekce ═══ */}
       <motion.section
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.6 }}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
+        className="bg-slate-100 py-16"
       >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -715,27 +661,33 @@ export default function Home() {
             </motion.div>
           ))}
         </div>
+        </div>
       </motion.section>
 
-      {/* CTA Section */}
+      {/* ═══ CTA: tmavě modrý gradient ═══ */}
       <motion.section
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.6 }}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16"
+        className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 py-16"
       >
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-0 left-1/3 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/3 w-96 h-96 bg-blue-400/15 rounded-full blur-3xl" />
+        </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="relative overflow-hidden bg-travel-600 rounded-2xl shadow-lg"
+          className="relative overflow-hidden bg-travel-600/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/10 text-center px-8 py-16"
         >
           <div className="absolute inset-0 opacity-20">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.1)_1px,transparent_0)] bg-size-[20px_20px]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.1)_1px,transparent_0)] bg-[length:20px_20px]" />
           </div>
-          <div className="relative text-center px-8 py-16">
+          <div className="relative">
             <h2 className="text-4xl sm:text-5xl font-black text-white mb-6">
               Připojte se k tisícům cestovatelů
             </h2>
@@ -744,7 +696,7 @@ export default function Home() {
               jen minutu.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/auth/register">
+              <Link href="/registrace">
                 <Button className="bg-white text-travel-600 hover:bg-gray-100 px-8 py-4 text-lg font-bold shadow-xl">
                   Zaregistrovat se zdarma
                 </Button>
@@ -760,6 +712,7 @@ export default function Home() {
             </div>
           </div>
         </motion.div>
+        </div>
       </motion.section>
     </div>
   );

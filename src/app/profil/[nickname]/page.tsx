@@ -14,7 +14,7 @@ import csLocale from "i18n-iso-countries/langs/cs.json";
 
 // Registrace českého jazyka pro i18n-iso-countries
 countries.registerLocale(csLocale);
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ErrorMessage } from "@/components/ui/ErrorMessage";
 import { FollowButton } from "@/components/profile/FollowButton";
 import { FollowersModal } from "@/components/profile/FollowersModal";
@@ -63,6 +63,9 @@ export default function ProfilePage({
     Array<{ iso2: string; name: string; id: string }>
   >([]);
   const [loading, setLoading] = useState(true);
+  const [loadingArticles, setLoadingArticles] = useState(false);
+  const [loadingVisited, setLoadingVisited] = useState(false);
+  const [loadingBadges, setLoadingBadges] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTimeoutError, setShowTimeoutError] = useState(false);
   const [modalType, setModalType] = useState<"followers" | "following" | null>(
@@ -239,7 +242,12 @@ export default function ProfilePage({
         const articlesUrl = isOwn
           ? `/api/articles?mine=true&userId=${userId}`
           : `/api/articles?authorId=${userId}&status=approved`;
-        fetch(articlesUrl)
+        const articlesHeaders: HeadersInit = {};
+        if (isOwn && accessToken) {
+          articlesHeaders["Authorization"] = `Bearer ${accessToken}`;
+        }
+        setLoadingArticles(true);
+        fetch(articlesUrl, { headers: articlesHeaders, credentials: "include" })
           .then((res) => (res.ok ? res.json() : null))
           .then((articlesData) => {
             if (articlesData?.items) {
@@ -248,10 +256,20 @@ export default function ProfilePage({
           })
           .catch((err) =>
             console.error("[ProfilePage] Chyba při načítání článků:", err),
-          );
+          )
+          .finally(() => setLoadingArticles(false));
 
         // Načíst navštívené země (neblokující)
-        fetch(`/api/visited?userId=${userId}`)
+        // Vlastní profil: GET /api/visited vyžaduje auth. Cizí profil: veřejné API /api/users/[id]/visited.
+        const visitedUrl = isOwn
+          ? `/api/visited?userId=${userId}`
+          : `/api/users/${userId}/visited`;
+        const visitedHeaders: HeadersInit = {};
+        if (isOwn && accessToken) {
+          visitedHeaders["Authorization"] = `Bearer ${accessToken}`;
+        }
+        setLoadingVisited(true);
+        fetch(visitedUrl, { headers: visitedHeaders, credentials: "include" })
           .then((res) => (res.ok ? res.json() : null))
           .then((visitedData) => {
             if (visitedData?.data) {
@@ -266,9 +284,11 @@ export default function ProfilePage({
           })
           .catch((err) =>
             console.error("[ProfilePage] Chyba při načítání zemí:", err),
-          );
+          )
+          .finally(() => setLoadingVisited(false));
 
         // Načíst odznaky pro tento profil (vlastní i cizí – zobrazení na public profilu)
+        setLoadingBadges(true);
         dbUtils
           .getBadges(userId)
           .then((badgesData) => {
@@ -276,7 +296,8 @@ export default function ProfilePage({
           })
           .catch((err) =>
             console.error("[ProfilePage] Chyba při načítání odznaků:", err),
-          );
+          )
+          .finally(() => setLoadingBadges(false));
       } catch (err: any) {
         console.error("[ProfilePage] Chyba při načítání profilu:", err);
         setError(err.message || "Nastala chyba");
@@ -451,7 +472,7 @@ export default function ProfilePage({
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition cursor-pointer"
           >
             Obnovit stránku
           </button>
@@ -460,11 +481,68 @@ export default function ProfilePage({
     );
   }
 
-  // Zobrazit loading pouze pokud nemáme profil a stále načítáme
-  // NENECHAT blokovat authLoading - pokud máme profil, zobrazit ho
-  // Zobrazit loading pouze pokud opravdu načítáme profil (loading) a nemáme ho
+  // Načítání profilu – zobrazit stránku se skeletony (bez spinneru)
   if (!profile && (loading || (authLoading && !user))) {
-    return <LoadingSpinner text="Načítání profilu..." fullPage />;
+    return (
+      <div className="min-h-screen relative">
+        <ProfileHero />
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="mt-6 rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-20 w-20 rounded-full flex-shrink-0" />
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-7 w-48" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 space-y-6">
+            <Card className="rounded-2xl border border-slate-200 shadow-sm">
+              <CardHeader className="pb-2">
+                <Skeleton className="h-5 w-32" />
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="rounded-2xl border border-slate-200 shadow-sm">
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <Skeleton key={i} className="h-8 w-24 rounded-full" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="rounded-2xl border border-slate-200 shadow-sm">
+              <CardHeader>
+                <Skeleton className="h-6 w-28" />
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="space-y-3">
+                      <Skeleton className="w-full h-40 rounded-xl" />
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   if (error && !profile) {
@@ -562,6 +640,43 @@ export default function ProfilePage({
           <>
             {activeTab === "map" && (
               <div className="mt-6 space-y-6 pb-8">
+                <Card className="rounded-2xl border border-slate-200 shadow-sm">
+                  <CardHeader>
+                    <CardTitle>
+                      Navštívené země ({visitedCountries.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {visitedCountries.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {visitedCountries.map((country) => (
+                          <span
+                            key={country.iso2}
+                            className="group inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium transition-all duration-200 hover:bg-emerald-100 hover:shadow-sm"
+                          >
+                            <span
+                              className={`fi fi-${country.iso2.toLowerCase()}`}
+                            />
+                            {getCountryNameCz(country.iso2, country.name)}
+                            <button
+                              onClick={() => handleRemoveCountry(country.iso2)}
+                              className="ml-1 opacity-0 group-hover:opacity-100 text-emerald-500 hover:text-red-500 transition-all duration-200 cursor-pointer hover:scale-125 active:scale-90"
+                              title="Odebrat"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-slate-500 text-center py-4">
+                        Zatím jste nenavštívili žádnou zemi. Klikněte na mapu
+                        pro přidání!
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
                 <Card className="rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[600px] flex flex-col">
                   <CardHeader className="px-6 pt-6">
                     <div className="flex items-center justify-between">
@@ -633,43 +748,6 @@ export default function ProfilePage({
                     </div>
                   </CardContent>
                 </Card>
-
-                <Card className="rounded-2xl border border-slate-200 shadow-sm">
-                  <CardHeader>
-                    <CardTitle>
-                      Navštívené země ({visitedCountries.length})
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {visitedCountries.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {visitedCountries.map((country) => (
-                          <span
-                            key={country.iso2}
-                            className="group inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium transition-all duration-200 hover:bg-emerald-100 hover:shadow-sm"
-                          >
-                            <span
-                              className={`fi fi-${country.iso2.toLowerCase()}`}
-                            />
-                            {getCountryNameCz(country.iso2, country.name)}
-                            <button
-                              onClick={() => handleRemoveCountry(country.iso2)}
-                              className="ml-1 opacity-0 group-hover:opacity-100 text-emerald-500 hover:text-red-500 transition-all duration-200 cursor-pointer hover:scale-125 active:scale-90"
-                              title="Odebrat"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-slate-500 text-center py-4">
-                        Zatím jste nenavštívili žádnou zemi. Klikněte na mapu
-                        pro přidání!
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
               </div>
             )}
 
@@ -704,8 +782,21 @@ export default function ProfilePage({
         {/* CIZÍ PROFIL - všechno najednou */}
         {!isOwnProfile && (
           <div className="mt-6 space-y-6">
-            {/* Odznaky */}
-            {badges.length > 0 && (
+            {/* Odznaky – skeleton nebo obsah */}
+            {loadingBadges ? (
+              <Card className="rounded-2xl border border-slate-200 shadow-sm">
+                <CardHeader className="pb-2">
+                  <Skeleton className="h-5 w-32" />
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : badges.length > 0 ? (
               <Card className="rounded-2xl border border-slate-200 shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold">
@@ -716,10 +807,23 @@ export default function ProfilePage({
                   <BadgesGrid badges={badges} compact />
                 </CardContent>
               </Card>
-            )}
+            ) : null}
 
-            {/* Navštívené země */}
-            {visitedCountries.length > 0 && (
+            {/* Navštívené země – skeleton nebo obsah */}
+            {loadingVisited ? (
+              <Card className="rounded-2xl border border-slate-200 shadow-sm">
+                <CardHeader>
+                  <Skeleton className="h-6 w-48" />
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                      <Skeleton key={i} className="h-8 w-24 rounded-full" />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : visitedCountries.length > 0 ? (
               <Card className="rounded-2xl border border-slate-200 shadow-sm">
                 <CardHeader>
                   <CardTitle>
@@ -742,10 +846,27 @@ export default function ProfilePage({
                   </div>
                 </CardContent>
               </Card>
-            )}
+            ) : null}
 
-            {/* Články */}
-            {articles.length > 0 && (
+            {/* Články – skeleton nebo obsah */}
+            {loadingArticles ? (
+              <Card className="rounded-2xl border border-slate-200 shadow-sm">
+                <CardHeader>
+                  <Skeleton className="h-6 w-28" />
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <div key={i} className="space-y-3">
+                        <Skeleton className="w-full h-40 rounded-xl" />
+                        <Skeleton className="h-5 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : articles.length > 0 ? (
               <Card className="rounded-2xl border border-slate-200 shadow-sm">
                 <CardHeader>
                   <CardTitle>Články ({articles.length})</CardTitle>
@@ -785,9 +906,10 @@ export default function ProfilePage({
                   </div>
                 </CardContent>
               </Card>
-            )}
+            ) : null}
 
-            {articles.length === 0 && visitedCountries.length === 0 && (
+            {/* Prázdný stav – jen když už je vše načtené a nic není */}
+            {!loadingArticles && !loadingVisited && !loadingBadges && articles.length === 0 && visitedCountries.length === 0 && (
               <Card className="rounded-2xl border border-slate-200 shadow-sm">
                 <CardContent className="py-12 text-center text-slate-500">
                   <span className="text-6xl mb-4 block">🌍</span>

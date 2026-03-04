@@ -195,7 +195,7 @@ export default function NotificationSettings() {
         <div className="flex rounded-lg border border-slate-200 overflow-hidden">
           <button
             onClick={() => setFilter("all")}
-            className={`px-4 py-2 text-sm font-medium transition ${
+            className={`px-4 py-2 text-sm font-medium transition cursor-pointer ${
               filter === "all"
                 ? "bg-emerald-600 text-white"
                 : "bg-white text-slate-700 hover:bg-slate-50"
@@ -205,7 +205,7 @@ export default function NotificationSettings() {
           </button>
           <button
             onClick={() => setFilter("unread")}
-            className={`px-4 py-2 text-sm font-medium transition ${
+            className={`px-4 py-2 text-sm font-medium transition cursor-pointer ${
               filter === "unread"
                 ? "bg-emerald-600 text-white"
                 : "bg-white text-slate-700 hover:bg-slate-50"
@@ -218,7 +218,7 @@ export default function NotificationSettings() {
           <button
             onClick={markAllAsRead}
             disabled={markingAll || unreadCount === 0}
-            className="text-sm text-emerald-600 hover:text-emerald-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-sm text-emerald-600 hover:text-emerald-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {markingAll ? "Označuji…" : "Označit vše jako přečtené"}
           </button>
@@ -226,7 +226,7 @@ export default function NotificationSettings() {
         <button
           onClick={handleCleanupOld}
           disabled={cleaningUp}
-          className="text-sm text-slate-600 hover:text-slate-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          className="text-sm text-slate-600 hover:text-slate-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           title="Smaže přečtená oznámení starší než 30 dní"
         >
           {cleaningUp ? "Mažu…" : "Smazat stará přečtená"}
@@ -248,7 +248,7 @@ export default function NotificationSettings() {
                 <li key={n.id} className="flex items-stretch">
                   <button
                     onClick={() => handleItemClick(n)}
-                    className={`flex-1 flex items-start gap-4 px-4 py-3 text-left hover:bg-slate-50 transition min-w-0 ${
+                    className={`flex-1 flex items-start gap-4 px-4 py-3 text-left hover:bg-slate-50 transition min-w-0 cursor-pointer ${
                       !n.readAt ? "bg-emerald-50/50" : ""
                     }`}
                   >
@@ -281,7 +281,7 @@ export default function NotificationSettings() {
                   <button
                     type="button"
                     onClick={(e) => handleDelete(e, n)}
-                    className="shrink-0 px-3 flex items-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                    className="shrink-0 px-3 flex items-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
                     title="Smazat"
                     aria-label="Smazat oznámení"
                   >
@@ -297,7 +297,7 @@ export default function NotificationSettings() {
               <button
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="px-4 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 ← Předchozí
               </button>
@@ -307,7 +307,7 @@ export default function NotificationSettings() {
               <button
                 onClick={() => setPage((p) => p + 1)}
                 disabled={!hasMore}
-                className="px-4 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 Další →
               </button>

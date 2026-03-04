@@ -178,7 +178,7 @@ export default function NotificationDropdown({
           <button
             onClick={handleMarkAllRead}
             disabled={markingAll}
-            className="text-sm text-emerald-600 hover:text-emerald-700 disabled:opacity-60"
+            className="text-sm text-emerald-600 hover:text-emerald-700 disabled:opacity-60 cursor-pointer"
           >
             {markingAll ? "Označuji…" : "Označit vše jako přečtené"}
           </button>
@@ -202,7 +202,7 @@ export default function NotificationDropdown({
                 <li key={n.id} className="flex items-stretch">
                   <button
                     onClick={() => handleItemClick(n)}
-                    className={`flex-1 flex items-start gap-3 px-4 py-3 text-left hover:bg-slate-50 transition min-w-0 ${
+                    className={`flex-1 flex items-start gap-3 px-4 py-3 text-left hover:bg-slate-50 transition min-w-0 cursor-pointer ${
                       !n.readAt ? "bg-emerald-50/50" : ""
                     }`}
                   >
@@ -233,7 +233,7 @@ export default function NotificationDropdown({
                   <button
                     type="button"
                     onClick={(e) => handleDelete(e, n)}
-                    className="shrink-0 px-2 flex items-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                    className="shrink-0 px-2 flex items-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
                     title="Smazat"
                     aria-label="Smazat oznámení"
                   >
@@ -250,7 +250,7 @@ export default function NotificationDropdown({
         <Link
           href="/nastaveni/oznameni"
           onClick={onClose}
-          className="block w-full text-center py-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+          className="block w-full text-center py-2 text-sm text-emerald-600 hover:text-emerald-700 font-medium cursor-pointer"
         >
           Zobrazit vše
         </Link>

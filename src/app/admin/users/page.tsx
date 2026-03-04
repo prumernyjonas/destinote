@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageLoading } from "@/components/ui/PageLoading";
+import { supabase } from "@/lib/supabase/client";
 
 type AdminUser = {
   id: string;
@@ -18,24 +20,13 @@ export default function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
 
-  function getUserId(): string | null {
-    try {
-      const keys = Object.keys(localStorage);
-      for (const key of keys) {
-        if (key.includes("supabase") || key.includes("auth")) {
-          try {
-            const value = localStorage.getItem(key);
-            if (value) {
-              const parsed = JSON.parse(value);
-              if (parsed?.user?.id) {
-                return parsed.user.id;
-              }
-            }
-          } catch {}
-        }
-      }
-    } catch {}
-    return null;
+  async function getAuthHeaders(): Promise<HeadersInit> {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    return session?.access_token
+      ? { Authorization: `Bearer ${session.access_token}` }
+      : {};
   }
 
   async function load() {
@@ -44,9 +35,10 @@ export default function AdminUsersPage() {
     try {
       const url = new URL("/api/admin/users", window.location.origin);
       if (query.trim()) url.searchParams.set("q", query.trim());
-      const userId = getUserId();
-      if (userId) url.searchParams.set("userId", userId);
-      const res = await fetch(url.toString(), { cache: "no-store" });
+      const res = await fetch(url.toString(), {
+        cache: "no-store",
+        headers: await getAuthHeaders(),
+      });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || "Chyba načítání uživatelů");
@@ -64,6 +56,10 @@ export default function AdminUsersPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  if (loading) {
+    return <PageLoading />;
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -87,63 +83,57 @@ export default function AdminUsersPage() {
       </div>
 
       {error && <div className="text-red-600">{error}</div>}
-      {loading ? (
-        <div>Načítám…</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border rounded-lg overflow-hidden">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left px-4 py-2 border-b">Uživatel</th>
-                <th className="text-left px-4 py-2 border-b">Email</th>
-                <th className="text-left px-4 py-2 border-b">Přezdívka</th>
-                <th className="text-left px-4 py-2 border-b">Role</th>
-                <th className="text-left px-4 py-2 border-b">Vytvořen</th>
+      <div className="overflow-x-auto">
+        <table className="min-w-full border rounded-lg overflow-hidden">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="text-left px-4 py-2 border-b">Uživatel</th>
+              <th className="text-left px-4 py-2 border-b">Email</th>
+              <th className="text-left px-4 py-2 border-b">Přezdívka</th>
+              <th className="text-left px-4 py-2 border-b">Role</th>
+              <th className="text-left px-4 py-2 border-b">Vytvořen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((u) => (
+              <tr key={u.id} className="hover:bg-gray-50">
+                <td className="px-4 py-2 border-b">
+                  <div className="flex items-center gap-3">
+                    {u.avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={u.avatar_url}
+                        alt={u.nickname || u.email || u.id}
+                        className="w-8 h-8 rounded-full object-cover border"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-sm">
+                        {u.nickname?.charAt(0)?.toUpperCase() ||
+                          u.email?.charAt(0)?.toUpperCase() ||
+                          "U"}
+                      </div>
+                    )}
+                    <div className="truncate max-w-[220px]">{u.id}</div>
+                  </div>
+                </td>
+                <td className="px-4 py-2 border-b">{u.email || "—"}</td>
+                <td className="px-4 py-2 border-b">{u.nickname}</td>
+                <td className="px-4 py-2 border-b">{u.role}</td>
+                <td className="px-4 py-2 border-b">
+                  {new Date(u.created_at).toLocaleDateString("cs-CZ")}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {items.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 border-b">
-                    <div className="flex items-center gap-3">
-                      {u.avatar_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={u.avatar_url}
-                          alt={u.nickname || u.email || u.id}
-                          className="w-8 h-8 rounded-full object-cover border"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-sm">
-                          {u.nickname?.charAt(0)?.toUpperCase() ||
-                            u.email?.charAt(0)?.toUpperCase() ||
-                            "U"}
-                        </div>
-                      )}
-                      <div className="truncate max-w-[220px]">{u.id}</div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 border-b">{u.email || "—"}</td>
-                  <td className="px-4 py-2 border-b">{u.nickname}</td>
-                  <td className="px-4 py-2 border-b">{u.role}</td>
-                  <td className="px-4 py-2 border-b">
-                    {new Date(u.created_at).toLocaleDateString("cs-CZ")}
-                  </td>
-                </tr>
-              ))}
-              {items.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
-                    Nic nenalezeno.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+            {items.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-center text-gray-500">
+                  Nic nenalezeno.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
-
-

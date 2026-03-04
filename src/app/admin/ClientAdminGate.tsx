@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { PageLoading } from "@/components/ui/PageLoading";
 
 export default function ClientAdminGate({
   children,
@@ -16,33 +17,16 @@ export default function ClientAdminGate({
     let cancelled = false;
     (async () => {
       try {
-        // Získáme userId z localStorage (stejně jako RoleLogger)
-        let userId: string | null = null;
-        try {
-          const keys = Object.keys(localStorage);
-          for (const key of keys) {
-            if (key.includes("supabase") || key.includes("auth")) {
-              try {
-                const value = localStorage.getItem(key);
-                if (value) {
-                  const parsed = JSON.parse(value);
-                  if (parsed?.user?.id) {
-                    userId = parsed.user.id;
-                    break;
-                  }
-                }
-              } catch {}
-            }
-          }
-        } catch {}
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const headers: HeadersInit = session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : {};
 
-        // Sestavíme URL s userId jako query parametr
-        const apiUrl = userId
-          ? `/api/auth/role?userId=${encodeURIComponent(userId)}`
-          : "/api/auth/role";
-
-        const res = await fetch(apiUrl, {
+        const res = await fetch("/api/auth/role", {
           cache: "no-store",
+          headers,
         });
 
         if (!res.ok) {
@@ -72,7 +56,7 @@ export default function ClientAdminGate({
   }, [router]);
 
   if (allowed === null) {
-    return null;
+    return <PageLoading />;
   }
   if (!allowed) {
     return null;

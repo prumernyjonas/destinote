@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { FiGlobe, FiMap, FiSearch, FiX } from "react-icons/fi";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface SearchResult {
   articles: Array<{
@@ -129,16 +129,52 @@ export default function SearchPage() {
         </div>
 
         {/* Results */}
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <LoadingSpinner text="Hledám..." />
-          </div>
-        ) : query.trim().length < 2 ? (
+        {query.trim().length < 2 ? (
           <div className="text-center py-12">
             <FiSearch className="w-16 h-16 text-blue-300 mx-auto mb-4" />
             <p className="text-blue-600 text-lg">
               Zadejte alespoň 2 znaky pro vyhledávání
             </p>
+          </div>
+        ) : loading ? (
+          <div className="space-y-8">
+            <div>
+              <Skeleton className="h-8 w-48 mb-4 rounded" />
+              <div className="grid gap-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 p-4 bg-white rounded-lg border border-blue-100"
+                  >
+                    <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Skeleton className="h-8 w-40 mb-4 rounded" />
+              <div className="grid gap-4">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="p-5 bg-white rounded-lg border border-blue-100"
+                  >
+                    <div className="flex items-start gap-4">
+                      <Skeleton className="h-6 w-6 rounded shrink-0 mt-1" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-5 w-full max-w-md" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : results.countries.length === 0 && results.articles.length === 0 ? (
           <div className="text-center py-12">
@@ -225,7 +261,7 @@ export default function SearchPage() {
                       while (true) {
                         const foundIndex = normalizedText.indexOf(
                           normalizedQuery,
-                          searchIndex
+                          searchIndex,
                         );
                         if (foundIndex === -1) break;
 
@@ -282,7 +318,7 @@ export default function SearchPage() {
                             className="bg-yellow-200 text-blue-900 font-semibold px-0.5 rounded"
                           >
                             {text.substring(match.start, match.end)}
-                          </mark>
+                          </mark>,
                         );
                         lastIndex = match.end;
                       });

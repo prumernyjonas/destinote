@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
+import { PageLoading } from "@/components/ui/PageLoading";
 import ClientAdminGate from "@/app/admin/ClientAdminGate";
 import PendingArticleCard from "@/components/admin/PendingArticleCard";
 import ArticleReviewDrawer from "@/components/admin/ArticleReviewDrawer";
 import UserDetailPanel from "@/components/admin/UserDetailPanel";
+import { supabase } from "@/lib/supabase/client";
 
 type AdminArticle = {
   id: string;
@@ -127,45 +129,24 @@ function AdminDashboard() {
     );
   }, [enrichedApprovedArticles, articleSearchQuery]);
 
-  function getUserId(): string | null {
-    try {
-      const keys = Object.keys(localStorage);
-      for (const key of keys) {
-        if (key.includes("supabase") || key.includes("auth")) {
-          try {
-            const value = localStorage.getItem(key);
-            if (value) {
-              const parsed = JSON.parse(value);
-              if (parsed?.user?.id) {
-                return parsed.user.id;
-              }
-            }
-          } catch (e) {
-            // Ignore
-          }
-        }
-      }
-    } catch (e) {
-      console.error("[AdminDashboard] Error accessing localStorage:", e);
-    }
-    return null;
+  async function getAuthHeaders(): Promise<HeadersInit> {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    return session?.access_token
+      ? { Authorization: `Bearer ${session.access_token}` }
+      : {};
   }
 
   async function loadAll() {
     setLoading(true);
     setError(null);
     try {
-      const userId = getUserId();
-      if (!userId) {
-        throw new Error("Uživatel není přihlášen");
-      }
-
       const buildUrl = (base: string, params: Record<string, string> = {}) => {
         const url = new URL(base, window.location.origin);
         Object.entries(params).forEach(([key, value]) => {
           url.searchParams.set(key, value);
         });
-        url.searchParams.set("userId", userId);
         return url.toString();
       };
 
@@ -175,10 +156,11 @@ function AdminDashboard() {
         users: buildUrl("/api/admin/users", { limit: "100" }),
       };
 
+      const headers = await getAuthHeaders();
       const [resPending, resApproved, resUsers] = await Promise.all([
-        fetch(urls.pending),
-        fetch(urls.approved),
-        fetch(urls.users),
+        fetch(urls.pending, { headers }),
+        fetch(urls.approved, { headers }),
+        fetch(urls.users, { headers }),
       ]);
 
       if (!resPending.ok || !resApproved.ok || !resUsers.ok) {
@@ -208,11 +190,10 @@ function AdminDashboard() {
   async function approveArticle(id: string) {
     setIsProcessing(true);
     try {
-      const userId = getUserId();
-      const url = userId
-        ? `/api/admin/articles/${id}/approve?userId=${encodeURIComponent(userId)}`
-        : `/api/admin/articles/${id}/approve`;
-      const res = await fetch(url, { method: "POST" });
+      const res = await fetch(`/api/admin/articles/${id}/approve`, {
+        method: "POST",
+        headers: await getAuthHeaders(),
+      });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || "Chyba při schvalování");
@@ -228,13 +209,12 @@ function AdminDashboard() {
   async function rejectArticle(id: string, reason?: string) {
     setIsProcessing(true);
     try {
-      const userId = getUserId();
-      const url = userId
-        ? `/api/admin/articles/${id}/reject?userId=${encodeURIComponent(userId)}`
-        : `/api/admin/articles/${id}/reject`;
-      const res = await fetch(url, {
+      const res = await fetch(`/api/admin/articles/${id}/reject`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          ...(await getAuthHeaders()),
+        },
         body: JSON.stringify({ reason: reason || "" }),
       });
       if (!res.ok) {
@@ -275,6 +255,10 @@ function AdminDashboard() {
     setSelectedUser(null);
   };
 
+  if (loading) {
+    return <PageLoading />;
+  }
+
   return (
     <div className="min-h-screen relative">
       {/* Dark blue background gradient */}
@@ -300,13 +284,8 @@ function AdminDashboard() {
           </div>
         )}
 
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="text-white/80">Načítám data…</div>
-          </div>
-        ) : (
-          <>
-            {/* KPI Bar */}
+        <>
+          {/* KPI Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <div className="rounded-2xl border border-white/15 bg-white/95 backdrop-blur shadow-xl p-6">
                 <div className="text-sm text-slate-600 mb-1">Čekající články</div>
@@ -542,7 +521,6 @@ function AdminDashboard() {
               </section>
             </div>
           </>
-        )}
       </main>
 
       {/* Article Review Drawer */}

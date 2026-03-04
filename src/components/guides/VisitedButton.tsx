@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/Toast";
 import { FiCheckCircle } from "react-icons/fi";
+import { getAccessTokenFromStorage } from "@/lib/articles/authUtils";
 
 type Props = {
   iso2: string;
@@ -42,13 +43,14 @@ export default function VisitedButton({
 
     const loadVisitedCountries = async () => {
       try {
-        const response = await fetch(
-          `/api/visited`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
+        const token = getAccessTokenFromStorage();
+        const headers: HeadersInit = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const response = await fetch(`/api/visited`, {
+          method: "GET",
+          credentials: "include",
+          headers,
+        });
         
         if (response.ok) {
           const result = await response.json();
@@ -95,14 +97,14 @@ export default function VisitedButton({
 
     try {
       if (currentlyVisited) {
-        const delRes = await fetch(
-          `/api/visited?iso2=${upperIso2}`,
-          {
-            method: "DELETE",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-          }
-        );
+        const token = getAccessTokenFromStorage();
+        const headers: HeadersInit = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const delRes = await fetch(`/api/visited?iso2=${upperIso2}`, {
+          method: "DELETE",
+          credentials: "include",
+          headers,
+        });
         if (!delRes.ok) {
           let message = `DELETE /api/visited ${delRes.status}`;
           try {
@@ -112,15 +114,15 @@ export default function VisitedButton({
           throw new Error(message);
         }
       } else {
-        const postRes = await fetch(
-          `/api/visited?iso2=${upperIso2}`,
-          {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ iso2: upperIso2 }),
-          }
-        );
+        const token = getAccessTokenFromStorage();
+        const headers: HeadersInit = { "Content-Type": "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const postRes = await fetch(`/api/visited?iso2=${upperIso2}`, {
+          method: "POST",
+          credentials: "include",
+          headers,
+          body: JSON.stringify({ iso2: upperIso2 }),
+        });
         if (!postRes.ok) {
           let message = `POST /api/visited ${postRes.status}`;
           try {

@@ -27,12 +27,14 @@ async function resolveUserId(req: NextRequest): Promise<string | null> {
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   const articleId = id;
   const admin = createAdminSupabaseClient();
+  const currentUserId = await resolveUserId(req);
+
   // Načíst všechny komentáře pro článek a seskupit na klientovi
   const { data, error } = await admin
     .from("comments")
@@ -47,6 +49,7 @@ export async function GET(
     });
   }
   const list = (data || []).filter((c) => !c.deleted_at);
+  const commentIds = list.map((c) => c.id);
 
   // Doplníme/aktualizujeme avatar a nickname z users tabulky (rychlejší než Auth API)
   const uniqueIds = Array.from(new Set(list.map((c) => c.author_id)));
@@ -116,6 +119,82 @@ export async function GET(
         u.avatar_url = meta.avatar_url;
       }
     }
+  }
+
+  // Načíst max 3 odznaky na autora (pro zobrazení u komentářů). Později lze přepnout na user_display_badges.
+  const authorBadgesMap = new Map<
+    string,
+    { id: string; name: string; icon_url: string | null }[]
+  >();
+  if (uniqueIds.length > 0) {
+    const { data: ubRows, error: ubErr } = await admin
+      .from("user_badges")
+      .select("user_id, badge_id, awarded_at")
+      .in("user_id", uniqueIds)
+      .order("awarded_at", { ascending: false });
+
+    if (!ubErr && ubRows?.length) {
+      const badgeIds = [...new Set(ubRows.map((r: any) => r.badge_id))];
+      const { data: badgesData, error: badgesErr } = await admin
+        .from("badges")
+        .select("id, name, icon_url")
+        .in("id", badgeIds);
+
+      if (!badgesErr && badgesData?.length) {
+        const badgeById = new Map(badgesData.map((b: any) => [b.id, b]));
+        const perUser = new Map<string, { id: string; name: string; icon_url: string | null }[]>();
+        for (const ub of ubRows) {
+          const arr = perUser.get(ub.user_id) ?? [];
+          if (arr.length >= 3) continue;
+          const b = badgeById.get(ub.badge_id);
+          if (b) {
+            arr.push(b);
+            perUser.set(ub.user_id, arr);
+          }
+        }
+        perUser.forEach((v, k) => authorBadgesMap.set(k, v));
+      }
+    }
+  }
+
+  for (const c of list) {
+    (c as any).author_badges = authorBadgesMap.get(c.author_id) ?? [];
+  }
+
+  // Počty lajků a dislajků + stav přihlášeného uživatele
+  const likesCountMap = new Map<string, number>();
+  const dislikesCountMap = new Map<string, number>();
+  const myLikedSet = new Set<string>();
+  const myDislikedSet = new Set<string>();
+
+  if (commentIds.length > 0) {
+    const [likesRes, dislikesRes] = await Promise.all([
+      admin.from("comment_likes").select("comment_id").in("comment_id", commentIds),
+      admin.from("comment_dislikes").select("comment_id").in("comment_id", commentIds),
+    ]);
+    for (const row of likesRes.data ?? []) {
+      const cid = (row as { comment_id: string }).comment_id;
+      likesCountMap.set(cid, (likesCountMap.get(cid) ?? 0) + 1);
+    }
+    for (const row of dislikesRes.data ?? []) {
+      const cid = (row as { comment_id: string }).comment_id;
+      dislikesCountMap.set(cid, (dislikesCountMap.get(cid) ?? 0) + 1);
+    }
+    if (currentUserId) {
+      const [myLikesRes, myDislikesRes] = await Promise.all([
+        admin.from("comment_likes").select("comment_id").eq("user_id", currentUserId).in("comment_id", commentIds),
+        admin.from("comment_dislikes").select("comment_id").eq("user_id", currentUserId).in("comment_id", commentIds),
+      ]);
+      for (const row of myLikesRes.data ?? []) myLikedSet.add((row as { comment_id: string }).comment_id);
+      for (const row of myDislikesRes.data ?? []) myDislikedSet.add((row as { comment_id: string }).comment_id);
+    }
+  }
+
+  for (const c of list) {
+    (c as any).likes_count = likesCountMap.get(c.id) ?? 0;
+    (c as any).dislikes_count = dislikesCountMap.get(c.id) ?? 0;
+    (c as any).my_liked = currentUserId ? myLikedSet.has(c.id) : false;
+    (c as any).my_disliked = currentUserId ? myDislikedSet.has(c.id) : false;
   }
 
   // sestavíme jednoduchý strom (max 1 úroveň odpovědí)

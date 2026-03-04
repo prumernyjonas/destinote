@@ -47,7 +47,11 @@ export default function ProfileSettings() {
       try {
         setLoadingNickname(true);
         console.log("[ProfileSettings] Načítám data uživatele z DB...");
-        const res = await fetch(`/api/users/${user.uid}`);
+        const accessToken = await getAccessToken();
+        const res = await fetch(`/api/users/${user.uid}`, {
+          credentials: "include",
+          ...(accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : {}),
+        });
         if (res.ok) {
           const data = await res.json();
           const dbNickname = data.data?.nickname;
@@ -348,7 +352,8 @@ export default function ProfileSettings() {
       // Pokud jsme nenahráli avatar, ale změnili jsme nickname, načteme avatar z DB na pozadí
       if (!uploadedAvatarUrl && user?.uid) {
         fetch(`/api/users/${user.uid}?t=${Date.now()}`, {
-          cache: 'no-store',
+          credentials: "include",
+          cache: "no-store",
         })
           .then((profileRes) => {
             if (profileRes.ok) {

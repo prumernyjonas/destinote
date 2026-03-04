@@ -46,6 +46,45 @@ export async function GET(req: NextRequest) {
     // Vytvořit mapu uživatelů pro rychlé vyhledávání
     const usersMap = new Map((users || []).map((u: any) => [u.id, u]));
 
+    // Načíst odznaky pro všechny uživatele v žebříčku
+    const { data: userBadgesRows, error: ubError } = await admin
+      .from("user_badges")
+      .select("user_id, badge_id")
+      .in("user_id", userIds);
+
+    if (ubError) {
+      console.warn("[leaderboard] user_badges error:", ubError.message);
+    }
+
+    const badgeIds =
+      userBadgesRows?.map((r: { badge_id: string }) => r.badge_id) ?? [];
+    const uniqueBadgeIds = [...new Set(badgeIds)];
+
+    let badgesMap = new Map<
+      string,
+      { id: string; name: string; description: string | null; icon_url: string | null }[]
+    >();
+
+    if (uniqueBadgeIds.length > 0) {
+      const { data: badgesData, error: badgesError } = await admin
+        .from("badges")
+        .select("id, name, description, icon_url")
+        .in("id", uniqueBadgeIds);
+
+      if (!badgesError && badgesData?.length) {
+        const badgeById = new Map(
+          badgesData.map((b: any) => [b.id, b])
+        );
+        for (const ub of userBadgesRows || []) {
+          const b = badgeById.get(ub.badge_id);
+          if (!b) continue;
+          const list = badgesMap.get(ub.user_id) ?? [];
+          list.push(b);
+          badgesMap.set(ub.user_id, list);
+        }
+      }
+    }
+
     // Helper funkce pro získání správné URL avatara
     const getAvatarUrl = (
       avatarUrl: string | null,
@@ -89,7 +128,12 @@ export async function GET(req: NextRequest) {
           avatarUrl: getAvatarUrl(user.avatar_url, displayName),
           score: 0, // Prozatím 0, může se přidat později
           countryCount: cc.countries_count || 0,
-          badges: [], // Prozatím prázdné, může se přidat později
+          badges: (badgesMap.get(cc.user_id) ?? []).map((b) => ({
+            id: b.id,
+            name: b.name,
+            description: b.description ?? "",
+            iconUrl: b.icon_url ?? null,
+          })),
           updatedAt: cc.updated_at || new Date().toISOString(),
         };
       })

@@ -6,6 +6,7 @@ import "@maptiler/sdk/dist/maptiler-sdk.css";
 import countries from "i18n-iso-countries";
 import cs from "i18n-iso-countries/langs/cs.json";
 import { dbUtils } from "@/utils/supabase-db";
+import { getAccessTokenFromStorage } from "@/lib/articles/authUtils";
 
 // Registrace českého locale (provedeno jednou při načtení modulu)
 try {
@@ -377,6 +378,12 @@ export default function DashboardPublicWorldMap({
             setBtnStyle(!currentlyVisited);
 
             try {
+              const token = getAccessTokenFromStorage();
+              const headers: Record<string, string> = {
+                "Content-Type": "application/json",
+              };
+              if (token) headers["Authorization"] = `Bearer ${token}`;
+
               // Voláme serverové API (funguje i na localhost), předáme fallback user-id v hlavičce
               if (currentlyVisited) {
                 const delRes = await fetch(
@@ -385,10 +392,8 @@ export default function DashboardPublicWorldMap({
                   )}`,
                   {
                     method: "DELETE",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "x-user-id": userId,
-                    },
+                    headers,
+                    credentials: "include",
                   }
                 );
                 if (!delRes.ok) {
@@ -406,10 +411,8 @@ export default function DashboardPublicWorldMap({
                   )}`,
                   {
                     method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "x-user-id": userId,
-                    },
+                    headers,
+                    credentials: "include",
                     body: JSON.stringify({ iso2: upperIso2 }),
                   }
                 );

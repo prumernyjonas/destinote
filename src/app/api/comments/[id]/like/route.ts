@@ -46,6 +46,13 @@ export async function POST(
       headers: { "content-type": "application/json" },
     });
   } else {
+    // Při lajku odebrat dislajk (jen jeden stav)
+    await admin
+      .from("comment_dislikes")
+      .delete()
+      .eq("comment_id", commentId)
+      .eq("user_id", userId);
+
     const { error: insErr } = await admin
       .from("comment_likes")
       .insert({ comment_id: commentId, user_id: userId });
