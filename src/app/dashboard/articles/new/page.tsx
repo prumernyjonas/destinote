@@ -141,8 +141,8 @@ export default function NewArticlePage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Nový článek</h1>
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Nový článek</h1>
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">

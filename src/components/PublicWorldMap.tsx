@@ -342,7 +342,7 @@ export default function PublicWorldMap({
           : "";
         const communityUrl = `/komunita?country=${countrySlug}`;
         const html = `
-          <div style="min-width:220px">
+          <div style="min-width:180px;max-width:90vw">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
               ${flag}
               <div style="font-weight:700;font-size:16px">${safeName}</div>

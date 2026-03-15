@@ -173,9 +173,9 @@ export default function FlightsPage() {
   const loading = loadingWidget || loadingMap;
 
   return (
-    <>
+    <div className="w-full px-4 sm:px-6 lg:px-8 max-w-[1920px] mx-auto">
       {/* Dodatečný widget nad mapou */}
-      <div className="w-full mb-8 relative">
+      <div className="w-full mb-6 sm:mb-8 relative">
         {loadingWidget && (
           <div className="w-full absolute inset-0 z-10">
             <Skeleton className="w-full h-96 rounded-lg" />
@@ -190,7 +190,7 @@ export default function FlightsPage() {
       </div>
 
       {/* Filtr s tlačítky */}
-      <div className="p-4 flex gap-3">
+      <div className="py-4 flex flex-wrap gap-2 sm:gap-3">
         <Button
           variant={filter === "cheapest" ? "primary" : "outline"}
           onClick={() => setFilter("cheapest")}
@@ -229,6 +229,6 @@ export default function FlightsPage() {
           style={{ minHeight: "calc(100vh - 120px)" }}
         ></div>
       </div>
-    </>
+    </div>
   );
 }

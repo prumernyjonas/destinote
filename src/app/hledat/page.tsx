@@ -98,30 +98,30 @@ export default function SearchPage() {
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search Bar */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <form onSubmit={handleSearch} className="relative">
-            <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-blue-600" />
+            <FiSearch className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-blue-600 shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Hledat země, články..."
-              className="w-full pl-12 pr-32 py-4 bg-white border-2 border-blue-200 rounded-full text-lg text-blue-900 placeholder-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+              className="w-full pl-10 sm:pl-12 pr-24 sm:pr-32 py-3 sm:py-4 bg-white border-2 border-blue-200 rounded-full text-base sm:text-lg text-blue-900 placeholder-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
               autoFocus
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={handleClear}
-                className="absolute right-32 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition cursor-pointer"
+                className="absolute right-14 sm:right-32 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition cursor-pointer"
                 aria-label="Vymazat vyhledávání"
               >
-                <FiX className="w-5 h-5" />
+                <FiX className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             )}
             <button
               type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2 bg-blue-700 text-white rounded-full hover:bg-blue-800 transition cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 px-4 sm:px-6 py-1.5 sm:py-2 text-sm sm:text-base bg-blue-700 text-white rounded-full hover:bg-blue-800 transition cursor-pointer"
             >
               Hledat
             </button>
@@ -187,8 +187,8 @@ export default function SearchPage() {
             {/* Countries Results */}
             {results.countries.length > 0 && (
               <div>
-                <h2 className="text-2xl font-bold text-blue-900 mb-4 flex items-center gap-2">
-                  <FiGlobe className="w-6 h-6" />
+                <h2 className="text-xl sm:text-2xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+                  <FiGlobe className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
                   Země ({results.countries.length})
                 </h2>
                 <div className="grid gap-3">
@@ -233,8 +233,8 @@ export default function SearchPage() {
             {/* Articles Results */}
             {results.articles.length > 0 && (
               <div>
-                <h2 className="text-2xl font-bold text-blue-900 mb-4 flex items-center gap-2">
-                  <FiMap className="w-6 h-6" />
+                <h2 className="text-xl sm:text-2xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+                  <FiMap className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
                   Články ({results.articles.length})
                 </h2>
                 <div className="grid gap-4">

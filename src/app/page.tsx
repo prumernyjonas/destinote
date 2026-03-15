@@ -435,14 +435,14 @@ export default function Home() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
             Objevte svět po kontinentech
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-2xl mx-auto px-2">
             Každý kontinent má svůj příběh. Začněte tam, kde vás to láká.
           </p>
         </motion.div>
-        <div className="flex flex-wrap justify-center gap-6">
+        <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
           {continents.map((continent, index) => (
             <motion.div
               key={continent.slug}
@@ -451,7 +451,7 @@ export default function Home() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.1, duration: 0.5 }}
               whileHover={{ y: -5 }}
-              className="flex-1 min-w-50 max-w-60"
+              className="flex-1 min-w-[180px] sm:min-w-[200px] max-w-[280px] sm:max-w-60 w-full sm:w-auto"
             >
               <div className="bg-white rounded-2xl border border-gray-200/70 shadow-sm hover:shadow-lg transition-all duration-200 h-full flex flex-col overflow-hidden">
                 {/* Header s názvem kontinentu a ikonou */}
