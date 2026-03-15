@@ -428,9 +428,9 @@ export default function Navbar() {
     <>
       <header className="bg-[#cbe1f7] border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
+          <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20 min-h-[3.5rem]">
             {/* Left: Logo */}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
               <Link
                 href="/"
                 className={`${marble.variable} flex items-center space-x-2`}
@@ -441,20 +441,20 @@ export default function Navbar() {
                   width={120}
                   height={26}
                   priority
-                  className="h-8 w-auto md:h-9"
+                  className="h-7 w-auto sm:h-8 lg:h-9 max-w-[100px] sm:max-w-[120px]"
                 />
               </Link>
             </div>
 
-            {/* Center: Nav links - Desktop only */}
+            {/* Center: Nav links - Desktop/tablet large only (lg+), pod 1024px hamburger */}
             <nav
-              className="hidden md:flex items-center space-x-12 text-blue-900 text-lg"
+              className="hidden lg:flex items-center space-x-4 xl:space-x-8 2xl:space-x-12 text-blue-900 text-base xl:text-lg shrink-0"
               role="navigation"
               aria-label="Hlavní"
             >
               <Link
                 href="/"
-                className={`px-3 py-1.5 rounded-full transition ${
+                className={`px-2 py-1.5 lg:px-3 rounded-full transition whitespace-nowrap ${
                   pathname === "/" ? "bg-white/60" : "hover:bg-white/60"
                 } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
               >
@@ -471,7 +471,7 @@ export default function Navbar() {
                   onFocus={() => setCountriesOpen(true)}
                   onTouchStart={() => setCountriesOpen(true)}
                   onClick={() => setCountriesOpen(false)}
-                  className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full transition cursor-pointer ${
+                  className={`inline-flex items-center gap-1 px-2 py-1.5 lg:px-3 rounded-full transition cursor-pointer whitespace-nowrap ${
                     isCountries ? "bg-white/60" : "hover:bg-white/60"
                   } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
                 >
@@ -485,7 +485,7 @@ export default function Navbar() {
                 </Link>
                 {countriesOpen && (
                   <div
-                    className="absolute mt-2 left-1/2 -translate-x-1/2 w-[min(96vw,42rem)] max-h-[min(70vh,28rem)] overflow-y-auto bg-slate-100 shadow-lg border border-slate-200 rounded-lg p-5 z-50"
+                    className="absolute mt-2 left-1/2 -translate-x-1/2 w-[min(96vw,42rem)] max-w-[calc(100vw-2rem)] max-h-[min(70vh,28rem)] overflow-y-auto bg-slate-100 shadow-lg border border-slate-200 rounded-lg p-4 sm:p-5 z-50"
                     onMouseLeave={() => setCountriesOpen(false)}
                   >
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-0 items-stretch">
@@ -528,7 +528,7 @@ export default function Navbar() {
 
               <Link
                 href="/komunita"
-                className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
+                className={`px-2 py-1.5 lg:px-3 rounded-full transition cursor-pointer whitespace-nowrap ${
                   isCommunity ? "bg-white/60" : "hover:bg-white/60"
                 } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
               >
@@ -537,7 +537,7 @@ export default function Navbar() {
 
               <Link
                 href="/letenky"
-                className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
+                className={`px-2 py-1.5 lg:px-3 rounded-full transition cursor-pointer whitespace-nowrap ${
                   pathname === "/letenky" ? "bg-white/60" : "hover:bg-white/60"
                 } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600`}
               >
@@ -546,7 +546,7 @@ export default function Navbar() {
 
               <Link
                 href="/zebricek"
-                className={`px-3 py-1.5 rounded-full transition cursor-pointer ${
+                className={`px-2 py-1.5 lg:px-3 rounded-full transition cursor-pointer whitespace-nowrap ${
                   pathname === "/leaderboard"
                     ? "bg-white/60"
                     : "hover:bg-white/60"
@@ -556,22 +556,22 @@ export default function Navbar() {
               </Link>
             </nav>
 
-            {/* Right: Search Icon + Notifications + Auth (Desktop) + Mobile Menu Button */}
-            <div className="flex items-center gap-3">
-              {/* Search Icon – otevře search bar pod navbarem, nepřesměruje na /hledat */}
+            {/* Right: Search Icon + Notifications + Auth (Desktop) + Mobile/Tablet Menu Button */}
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              {/* Search Icon – otevře search bar pod navbarem */}
               <button
                 type="button"
                 onClick={() => setSearchBarOpen((v) => !v)}
-                className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-pointer"
+                className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-pointer shrink-0"
                 aria-label={searchBarOpen ? "Zavřít vyhledávání" : "Vyhledávání"}
               >
                 <FiSearch className="w-5 h-5 text-blue-900" />
               </button>
 
-              {/* Notification Bell - Desktop, logged in only */}
+              {/* Notification Bell - Desktop (lg+), logged in only */}
               {mounted && displayUser && (
                 <div
-                  className="hidden md:block relative"
+                  className="hidden lg:block relative shrink-0"
                   ref={notificationsRef}
                 >
                   <button
@@ -595,18 +595,18 @@ export default function Navbar() {
                 </div>
               )}
 
-              {/* Mobile Menu Button */}
+              {/* Mobile/Tablet Menu Button - zobrazit pod 1024px */}
               <button
                 onClick={() => setMobileMenuOpen(true)}
-                className="md:hidden p-2 rounded-lg hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-pointer"
+                className="lg:hidden p-2 rounded-lg hover:bg-white/60 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 cursor-pointer shrink-0"
                 aria-label="Otevřít menu"
               >
-                <FiMenu className="w-6 h-6 text-blue-900" />
+                <FiMenu className="w-6 h-6 sm:w-7 sm:h-7 text-blue-900" />
               </button>
 
-              {/* Auth Section - Desktop only */}
+              {/* Auth Section - Desktop only (lg+) */}
               <div
-                className="hidden md:flex items-center relative"
+                className="hidden lg:flex items-center relative shrink-0"
                 ref={menuRef}
               >
                 {!mounted ? (
@@ -767,35 +767,35 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Search bar – stejný blok jako na /hledat (šířka, výška, styly) */}
+      {/* Search bar – responzivní na mobil/tablet/desktop */}
       {searchBarOpen && (
-        <div className="sticky top-20 z-40 bg-white border-b border-gray-200 py-4 shadow-sm">
+        <div className="sticky top-14 sm:top-16 lg:top-20 z-40 bg-white border-b border-gray-200 py-3 sm:py-4 shadow-sm">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-0">
               <form onSubmit={handleSearchSubmit} className="relative">
-                <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 text-blue-600" />
+                <FiSearch className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-blue-600 shrink-0" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Hledat země, články..."
-                  className="w-full pl-12 pr-32 py-4 bg-white border-2 border-blue-200 rounded-full text-lg text-blue-900 placeholder-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  className="w-full pl-10 sm:pl-12 pr-24 sm:pr-32 py-3 sm:py-4 bg-white border-2 border-blue-200 rounded-full text-base sm:text-lg text-blue-900 placeholder-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   aria-label="Vyhledávací dotaz"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-32 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition cursor-pointer"
+                    className="absolute right-14 sm:right-32 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition cursor-pointer"
                     aria-label="Vymazat vyhledávání"
                   >
-                    <FiX className="w-5 h-5" />
+                    <FiX className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 )}
                 <button
                   type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2 bg-blue-700 text-white rounded-full hover:bg-blue-800 transition cursor-pointer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 px-4 sm:px-6 py-1.5 sm:py-2 text-sm sm:text-base bg-blue-700 text-white rounded-full hover:bg-blue-800 transition cursor-pointer"
                 >
                   Hledat
                 </button>
@@ -805,9 +805,9 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile/Tablet Menu Overlay – zobrazit pod 1024px */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden">
           {/* Fullscreen Menu */}
           <div
             ref={mobileMenuRef}

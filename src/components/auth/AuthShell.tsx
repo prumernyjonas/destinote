@@ -14,7 +14,7 @@ export default function AuthShell({
   children,
 }: AuthShellProps) {
   return (
-    <div className="min-h-screen relative flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen relative flex flex-col justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
       <div
         className="fixed inset-0 -z-10"
         style={{
@@ -38,7 +38,7 @@ export default function AuthShell({
         }}
       />
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 animate-[auth-fade-in_0.5s_ease-out]">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md md:max-w-lg relative z-10 animate-[auth-fade-in_0.5s_ease-out]">
         <div className="flex justify-center mb-5">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-travel-300 to-green-500 flex items-center justify-center shadow-lg shadow-travel-400/30 ring-1 ring-white/10">
             <svg
@@ -58,7 +58,7 @@ export default function AuthShell({
         </div>
 
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight">
             {title}
           </h1>
           <div className="text-sm text-travel-50/60">{subtitle}</div>
@@ -66,7 +66,7 @@ export default function AuthShell({
 
         <div className="relative">
           <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-white/15 via-transparent to-white/5" />
-          <div className="relative bg-white/5 backdrop-blur-xl border border-white/8 shadow-2xl shadow-black/30 py-8 px-4 sm:rounded-2xl sm:px-10">
+          <div className="relative bg-white/5 backdrop-blur-xl border border-white/8 shadow-2xl shadow-black/30 py-6 px-4 sm:py-8 sm:rounded-2xl sm:px-8 md:px-10">
             {children}
           </div>
         </div>
